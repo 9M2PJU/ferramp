@@ -20,7 +20,7 @@ use crate::gfx::Bitmap;
 use crate::metadata::{self, InfoWorker};
 use crate::playlist::{self, format_time};
 use crate::skin::{CursorKind, Skin, region_mask};
-use crate::state::{Focus, PL_SEG_H, PL_SEG_W, State, WinGeom};
+use crate::state::{PL_SEG_H, PL_SEG_W, State, WinGeom};
 use crate::ui::dialogs::{Dialog, DialogKind, Key as DKey, Outcome, Prefs};
 use crate::ui::eq_win::EqWin;
 use crate::ui::main_win::MainWin;

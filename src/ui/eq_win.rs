@@ -27,7 +27,7 @@ pub enum Widget {
 pub const BAND_X: [i32; 10] = [78, 96, 114, 132, 150, 168, 186, 204, 222, 240];
 const SLIDER_Y: i32 = 38;
 const SLIDER_H: i32 = 63;
-const THUMB_TRAVEL: i32 = 51; // 62 - 11
+const THUMB_TRAVEL: i32 = 50; // the original's thumb has 51 positions
 
 #[derive(Default)]
 pub struct EqWin {
@@ -163,7 +163,7 @@ impl EqWin {
             let n = (level * 27.0).round() as i32;
             let (fx, fy) = (n % 14, n / 14);
             skin.draw_part(out, sp::EQ_SLIDER_BACKGROUND, fx * 15, fy * 65, 14, 63, x, SLIDER_Y);
-            let ty = (value.min(63) as f64 / 63.0 * THUMB_TRAVEL as f64).floor() as i32;
+            let ty = (value.min(63) as f64 / 63.0 * THUMB_TRAVEL as f64).round() as i32;
             skin.draw(out, if active { sp::EQ_SLIDER_THUMB_SELECTED } else { sp::EQ_SLIDER_THUMB }, x + 1, SLIDER_Y + ty);
         };
         band(out, 21, st.eq.preamp, self.pressed == Some(Widget::Preamp));
@@ -310,7 +310,7 @@ impl EqWin {
 }
 
 fn slider_y(v: u8) -> i32 {
-    (v.min(63) as f64 / 63.0 * THUMB_TRAVEL as f64).floor() as i32
+    (v.min(63) as f64 / 63.0 * THUMB_TRAVEL as f64).round() as i32
 }
 
 fn grab(rel_y: i32, thumb_y: i32) -> i32 {
@@ -325,79 +325,44 @@ pub fn draw_graph(st: &State, out: &mut Bitmap, gx: i32, gy: i32) {
     // line at the bottom of the graph.
     let pre = (((63 - st.eq.preamp.min(63)) as f64 / 63.0) * 18.0).round() as i32;
     skin.draw(out, sp::EQ_PREAMP_LINE, gx, gy + pre);
-    let xs: Vec<f64> = (0..10).map(|i| (i * 12) as f64).collect();
-    let ys: Vec<f64> = st.eq.bands.iter().map(|&v| v.min(63) as f64 / 63.0 * 18.0).collect();
-    let curve = spline(&xs, &ys);
-    let mut last = ys[0].round() as i32;
-    for (x, yv) in curve.iter().enumerate() {
-        let y = (yv.round() as i32).clamp(0, 18);
-        let top = y.min(last);
-        let h = 1 + (last - y).abs();
-        for yy in top..top + h {
-            // Skins whose eqmain.bmp lacks the colour strip draw no curve.
-            let c = skin.sprite_pixel(sp::EQ_GRAPH_LINE_COLORS, 0, yy);
-            if c >> 24 != 0 {
-                out.set(gx + 2 + x as i32, gy + yy, c);
-            }
+    // The curve: a Catmull-Rom interpolation of the band levels (rows, 0.75
+    // row per dB around the middle row), sampled per pixel and joined with
+    // line segments. Parameters fitted to the original's output.
+    let rows: Vec<f64> = st.eq.bands.iter().map(|&v| 9.0 - 0.75 * crate::audio::dsp::slider_to_db(v)).collect();
+    let ys: Vec<i32> = (0..109).map(|x| catmull_rom(&rows, x as f64 - 0.5, 0.4).floor() as i32).map(|y| y.clamp(0, 18)).collect();
+    let mut plot = |x: i32, y: i32| {
+        let c = skin.sprite_pixel(sp::EQ_GRAPH_LINE_COLORS, 0, y);
+        // Skins whose eqmain.bmp lacks the colour strip draw no curve.
+        if c >> 24 != 0 && (0..113).contains(&x) {
+            out.set(gx + x, gy + y, c);
         }
-        last = y;
+    };
+    for x in 0..ys.len() - 1 {
+        let (x0, y0, x1, y1) = (2 + x as i32, ys[x], 3 + x as i32, ys[x + 1]);
+        let n = (x1 - x0).abs().max((y1 - y0).abs());
+        for i in 0..n {
+            let t = i as f64 / n as f64;
+            let px = (x0 as f64 + (x1 - x0) as f64 * t + 1e-9).round() as i32;
+            let py = (y0 as f64 + (y1 - y0) as f64 * t + 1e-9).round() as i32;
+            plot(px, py);
+        }
     }
+    plot(2 + ys.len() as i32 - 1, ys[ys.len() - 1]);
 }
 
-/// Natural cubic spline evaluated at every integer x from xs[0] to xs[n-1].
-pub fn spline(xs: &[f64], ys: &[f64]) -> Vec<f64> {
-    let n = xs.len() - 1;
-    // Solve for the derivatives ks of a natural spline (tridiagonal system).
-    let mut a = vec![0.0; n + 1];
-    let mut b = vec![0.0; n + 1];
-    let mut c = vec![0.0; n + 1];
-    let mut d = vec![0.0; n + 1];
-    for i in 0..=n {
-        if i == 0 {
-            let h = xs[1] - xs[0];
-            b[0] = 2.0 / h;
-            c[0] = 1.0 / h;
-            d[0] = 3.0 * (ys[1] - ys[0]) / (h * h);
-        } else if i == n {
-            let h = xs[n] - xs[n - 1];
-            a[n] = 1.0 / h;
-            b[n] = 2.0 / h;
-            d[n] = 3.0 * (ys[n] - ys[n - 1]) / (h * h);
-        } else {
-            let h0 = xs[i] - xs[i - 1];
-            let h1 = xs[i + 1] - xs[i];
-            a[i] = 1.0 / h0;
-            b[i] = 2.0 * (1.0 / h0 + 1.0 / h1);
-            c[i] = 1.0 / h1;
-            d[i] = 3.0 * ((ys[i] - ys[i - 1]) / (h0 * h0) + (ys[i + 1] - ys[i]) / (h1 * h1));
-        }
-    }
-    // Thomas algorithm.
-    for i in 1..=n {
-        let m = a[i] / b[i - 1];
-        b[i] -= m * c[i - 1];
-        d[i] -= m * d[i - 1];
-    }
-    let mut k = vec![0.0; n + 1];
-    k[n] = d[n] / b[n];
-    for i in (0..n).rev() {
-        k[i] = (d[i] - c[i] * k[i + 1]) / b[i];
-    }
-    let max_x = xs[n] as i32;
-    let mut out = Vec::with_capacity(max_x as usize + 1);
-    let mut i = 1;
-    for x in 0..=max_x {
-        let xf = x as f64;
-        while xs[i] < xf {
-            i += 1;
-        }
-        let h = xs[i] - xs[i - 1];
-        let t = (xf - xs[i - 1]) / h;
-        let aa = k[i - 1] * h - (ys[i] - ys[i - 1]);
-        let bb = -k[i] * h + (ys[i] - ys[i - 1]);
-        out.push((1.0 - t) * ys[i - 1] + t * ys[i] + t * (1.0 - t) * (aa * (1.0 - t) + bb * t));
-    }
-    out
+/// Catmull-Rom style cubic through the ten band levels placed every 12
+/// pixels; `tension` scales the tangents.
+pub fn catmull_rom(ys: &[f64], x: f64, tension: f64) -> f64 {
+    let i = ((x / 12.0).floor() as i64).clamp(0, 8) as usize;
+    let t = ((x - 12.0 * i as f64) / 12.0).clamp(0.0, 1.0);
+    let p0 = ys[i.saturating_sub(1)];
+    let p1 = ys[i];
+    let p2 = ys[i + 1];
+    let p3 = ys[(i + 2).min(9)];
+    let m1 = tension * (p2 - p0);
+    let m2 = tension * (p3 - p1);
+    let (t2, t3) = (t * t, t * t * t);
+    (2.0 * t3 - 3.0 * t2 + 1.0) * p1 + (t3 - 2.0 * t2 + t) * m1 + (-2.0 * t3 + 3.0 * t2) * p2 + (t3 - t2) * m2
 }
 
 #[cfg(test)]
@@ -405,15 +370,11 @@ mod tests {
     use super::*;
 
     #[test]
-    fn spline_passes_through_points() {
-        let xs: Vec<f64> = (0..10).map(|i| (i * 12) as f64).collect();
-        let ys = vec![0.0, 18.0, 9.0, 3.0, 12.0, 9.0, 9.0, 0.0, 18.0, 5.0];
-        let c = spline(&xs, &ys);
-        assert_eq!(c.len(), 109);
+    fn curve_passes_through_knots() {
+        let ys = [0.0, 18.0, 9.0, 3.0, 12.0, 9.0, 9.0, 0.0, 18.0, 5.0];
         for (i, y) in ys.iter().enumerate() {
-            assert!((c[i * 12] - y).abs() < 1e-9);
+            assert!((catmull_rom(&ys, (i * 12) as f64, 0.4) - y).abs() < 1e-9);
         }
-        let flat = spline(&xs, &[9.0; 10]);
-        assert!(flat.iter().all(|v| (v - 9.0).abs() < 1e-9));
+        assert!((catmull_rom(&[9.0; 10], 50.0, 0.4) - 9.0).abs() < 1e-9);
     }
 }
