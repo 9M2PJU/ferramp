@@ -591,6 +591,7 @@ impl App {
     }
 
     fn set_window_pos(&mut self, k: WinKind, x: i32, y: i32) {
+        debug!("move {k:?} -> {x},{y}");
         let g = self.st.geom_mut(k);
         g.x = x;
         g.y = y;
@@ -682,37 +683,22 @@ impl App {
         (dx + best_x.unwrap_or(0), dy + best_y.unwrap_or(0))
     }
 
-    /// After a window changes height (shade/double size/resize), move windows
-    /// that were docked below/right of it so the stack stays together.
-    fn reflow_after_resize(&mut self, changed: WinKind, old: (i32, i32, i32, i32)) {
-        let new = self.rect_of(changed);
-        let dh = new.3 - old.3;
-        let dw = new.2 - old.2;
-        if dh == 0 && dw == 0 {
-            return;
-        }
-        let vis = self.visible_kinds();
-        let mut moved = vec![changed];
-        let mut queue: Vec<(WinKind, (i32, i32, i32, i32))> = vec![(changed, old)];
-        while let Some((k, prev)) = queue.pop() {
-            for &o in &vis {
-                if moved.contains(&o) {
-                    continue;
-                }
-                let r = self.rect_of(o);
-                let below = r.1 == prev.1 + prev.3 && r.0 < prev.0 + prev.2 && prev.0 < r.0 + r.2;
-                let right = r.0 == prev.0 + prev.2 && r.1 < prev.1 + prev.3 && prev.1 < r.1 + r.3;
-                if below && dh != 0 {
-                    queue.push((o, r));
-                    moved.push(o);
-                    self.set_window_pos(o, r.0, r.1 + dh);
-                } else if right && dw != 0 {
-                    queue.push((o, r));
-                    moved.push(o);
-                    self.set_window_pos(o, r.0 + dw, r.1);
-                }
+    /// Snapshot of the visible windows' rectangles (screen pixels).
+    fn layout_snapshot(&self) -> Vec<(WinKind, (i32, i32, i32, i32))> {
+        self.visible_kinds().into_iter().map(|k| (k, self.rect_of(k))).collect()
+    }
+
+    /// After window sizes changed (shade, double size, playlist resize), keep
+    /// docked windows attached: each window anchored below or right of
+    /// another follows that window's new edge.
+    fn relayout_from(&mut self, before: Vec<(WinKind, (i32, i32, i32, i32))>) {
+        let sizes: Vec<(WinKind, (i32, i32))> =
+            before.iter().map(|(k, _)| (*k, (self.rect_of(*k).2, self.rect_of(*k).3))).collect();
+        for (k, (x, y)) in relayout(&before, &sizes) {
+            let g = self.st.geom(k);
+            if g.x != x || g.y != y {
+                self.set_window_pos(k, x, y);
             }
-            let _ = k;
         }
     }
 
@@ -764,7 +750,7 @@ impl App {
                 let s = self.ui_scale;
                 let dx = (cur.0 - start_cursor.0) / s;
                 let dy = (cur.1 - start_cursor.1) / s;
-                let old_rect = self.rect_of(WinKind::Playlist);
+                let before = self.layout_snapshot();
                 let w_px = 275 + start_size.0 * PL_SEG_W + dx;
                 let h_px = 116 + start_size.1 * PL_SEG_H + dy;
                 let nw = ((w_px - 275 + PL_SEG_W / 2) / PL_SEG_W).max(0);
@@ -772,7 +758,7 @@ impl App {
                 if (nw, nh) != self.st.pl_size {
                     self.st.pl_size = (nw, nh);
                     self.sync_sizes();
-                    self.reflow_after_resize(WinKind::Playlist, old_rect);
+                    self.relayout_from(before);
                 }
             }
         }
@@ -1640,12 +1626,10 @@ impl App {
             Cmd::ToggleRepeat => st.repeat = !st.repeat,
             Cmd::ToggleTimeMode => st.time_remaining = !st.time_remaining,
             Cmd::ToggleDouble => {
-                let old: Vec<(WinKind, (i32, i32, i32, i32))> = [WinKind::Main, WinKind::Eq].iter().map(|k| (*k, self.rect_of(*k))).collect();
+                let before = self.layout_snapshot();
                 self.st.doubled = !self.st.doubled;
                 self.sync_sizes();
-                for (k, r) in old {
-                    self.reflow_after_resize(k, r);
-                }
+                self.relayout_from(before);
             }
             Cmd::ToggleAlwaysOnTop => {
                 st.always_on_top = !st.always_on_top;
@@ -1667,11 +1651,11 @@ impl App {
             }
             Cmd::CloseWindow(k) => self.set_visible(k, false),
             Cmd::ToggleShade(k) => {
-                let old = self.rect_of(k);
+                let before = self.layout_snapshot();
                 let g = self.st.geom_mut(k);
                 g.shade = !g.shade;
                 self.sync_sizes();
-                self.reflow_after_resize(k, old);
+                self.relayout_from(before);
             }
             Cmd::Minimize => {
                 for w in self.wins.values() {
@@ -2228,6 +2212,7 @@ impl ApplicationHandler<UserEvent> for App {
                 self.st.dirty = true;
             }
             WindowEvent::Moved(p) => {
+                debug!("moved event {k:?} {},{}", p.x, p.y);
                 if self.drag.is_none() {
                     let g = self.st.geom_mut(k);
                     g.x = p.x;
@@ -2384,6 +2369,58 @@ fn wheel_steps(delta: MouseScrollDelta) -> i32 {
     }
 }
 
+/// New positions after a size change. `before` holds the old rectangles,
+/// `sizes` the new sizes. A window whose top edge lay on another's bottom
+/// edge (overlapping horizontally) stays below it; likewise for left/right.
+fn relayout(before: &[(WinKind, (i32, i32, i32, i32))], sizes: &[(WinKind, (i32, i32))]) -> Vec<(WinKind, (i32, i32))> {
+    let n = before.len();
+    let size = |k: WinKind| sizes.iter().find(|s| s.0 == k).map(|s| s.1).unwrap_or((0, 0));
+    // Anchor of each window: (index of anchor, attached below?).
+    let mut anchor: Vec<Option<(usize, bool)>> = vec![None; n];
+    for (i, (_, r)) in before.iter().enumerate() {
+        for (j, (_, p)) in before.iter().enumerate() {
+            if i == j {
+                continue;
+            }
+            let overlap_x = r.0 < p.0 + p.2 && p.0 < r.0 + r.2;
+            let overlap_y = r.1 < p.1 + p.3 && p.1 < r.1 + r.3;
+            if overlap_x && r.1 == p.1 + p.3 {
+                anchor[i] = Some((j, true));
+                break;
+            }
+            if overlap_y && r.0 == p.0 + p.2 && anchor[i].is_none() {
+                anchor[i] = Some((j, false));
+            }
+        }
+    }
+    fn place(
+        i: usize,
+        before: &[(WinKind, (i32, i32, i32, i32))],
+        anchor: &[Option<(usize, bool)>],
+        size: &dyn Fn(WinKind) -> (i32, i32),
+        memo: &mut Vec<Option<(i32, i32)>>,
+        depth: usize,
+    ) -> (i32, i32) {
+        if let Some(p) = memo[i] {
+            return p;
+        }
+        let r = before[i].1;
+        let pos = match anchor[i] {
+            Some((j, below)) if depth < 8 => {
+                let (px, py) = place(j, before, anchor, size, memo, depth + 1);
+                let pr = before[j].1;
+                let (pw, ph) = size(before[j].0);
+                if below { (px + (r.0 - pr.0), py + ph) } else { (px + pw, py + (r.1 - pr.1)) }
+            }
+            _ => (r.0, r.1),
+        };
+        memo[i] = Some(pos);
+        pos
+    }
+    let mut memo = vec![None; n];
+    (0..n).map(|i| (before[i].0, place(i, before, &anchor, &size, &mut memo, 0))).collect()
+}
+
 fn touching(a: (i32, i32, i32, i32), b: (i32, i32, i32, i32)) -> bool {
     let (ax, ay, aw, ah) = a;
     let (bx, by, bw, bh) = b;
@@ -2512,6 +2549,29 @@ fn app_icon() -> winit::window::Icon {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn relayout_keeps_stack_docked() {
+        let before = vec![
+            (WinKind::Main, (40, 40, 275, 116)),
+            (WinKind::Eq, (40, 156, 275, 116)),
+            (WinKind::Playlist, (40, 272, 275, 232)),
+        ];
+        // Double size: main and eq twice as big.
+        let sizes = vec![(WinKind::Main, (550, 232)), (WinKind::Eq, (550, 232)), (WinKind::Playlist, (275, 232))];
+        let out = relayout(&before, &sizes);
+        assert_eq!(out[1].1, (40, 272));
+        assert_eq!(out[2].1, (40, 504));
+        // Shade the main window.
+        let sizes = vec![(WinKind::Main, (275, 14)), (WinKind::Eq, (275, 116)), (WinKind::Playlist, (275, 232))];
+        let out = relayout(&before, &sizes);
+        assert_eq!(out[1].1, (40, 54));
+        assert_eq!(out[2].1, (40, 170));
+        // Side by side: a window right of the playlist follows its width.
+        let before = vec![(WinKind::Playlist, (0, 0, 275, 116)), (WinKind::Eq, (275, 0, 275, 116))];
+        let sizes = vec![(WinKind::Playlist, (325, 116)), (WinKind::Eq, (275, 116))];
+        assert_eq!(relayout(&before, &sizes)[1].1, (325, 0));
+    }
 
     #[test]
     fn docking_detection() {

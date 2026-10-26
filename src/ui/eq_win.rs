@@ -321,7 +321,9 @@ fn grab(rel_y: i32, thumb_y: i32) -> i32 {
 pub fn draw_graph(st: &State, out: &mut Bitmap, gx: i32, gy: i32) {
     let skin = &st.skin;
     // Preamp line.
-    let pre = ((st.eq.preamp.min(63) as f64 / 63.0) * 18.0).round() as i32;
+    // The original draws the preamp line inverted: preamp at +12 dB puts the
+    // line at the bottom of the graph.
+    let pre = (((63 - st.eq.preamp.min(63)) as f64 / 63.0) * 18.0).round() as i32;
     skin.draw(out, sp::EQ_PREAMP_LINE, gx, gy + pre);
     let xs: Vec<f64> = (0..10).map(|i| (i * 12) as f64).collect();
     let ys: Vec<f64> = st.eq.bands.iter().map(|&v| v.min(63) as f64 / 63.0 * 18.0).collect();
@@ -332,8 +334,11 @@ pub fn draw_graph(st: &State, out: &mut Bitmap, gx: i32, gy: i32) {
         let top = y.min(last);
         let h = 1 + (last - y).abs();
         for yy in top..top + h {
+            // Skins whose eqmain.bmp lacks the colour strip draw no curve.
             let c = skin.sprite_pixel(sp::EQ_GRAPH_LINE_COLORS, 0, yy);
-            out.set(gx + 2 + x as i32, gy + yy, c);
+            if c >> 24 != 0 {
+                out.set(gx + 2 + x as i32, gy + yy, c);
+            }
         }
         last = y;
     }
