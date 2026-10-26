@@ -273,16 +273,25 @@ impl SkinFiles {
         } else {
             let file = std::fs::File::open(path).map_err(|e| format!("{}: {e}", path.display()))?;
             let mut zip = zip::ZipArchive::new(file).map_err(|e| format!("{}: {e}", path.display()))?;
-            for i in 0..zip.len() {
-                let Ok(mut f) = zip.by_index(i) else { continue };
+            let mut total: u64 = 0;
+            for i in 0..zip.len().min(MAX_ENTRIES) {
+                let Ok(f) = zip.by_index(i) else { continue };
                 if f.is_dir() {
                     continue;
                 }
                 let Ok(name) = f.name() else { continue };
                 let name = name.replace('\\', "/");
                 let base = name.rsplit('/').next().unwrap_or(&name).to_ascii_lowercase();
+                if !is_skin_file(&base) || f.size() > MAX_FILE_BYTES {
+                    continue;
+                }
                 let mut buf = Vec::new();
-                if f.read_to_end(&mut buf).is_ok() {
+                // Never trust the declared size: cap the decompressed read too.
+                if f.take(MAX_FILE_BYTES).read_to_end(&mut buf).is_ok() {
+                    total += buf.len() as u64;
+                    if total > MAX_TOTAL_BYTES {
+                        return Err(format!("{}: skin archive too large", path.display()));
+                    }
                     entries.insert(base, buf);
                 }
             }
@@ -313,6 +322,21 @@ impl SkinFiles {
     }
 }
 
+const MAX_ENTRIES: usize = 4096;
+const MAX_FILE_BYTES: u64 = 8 * 1024 * 1024;
+const MAX_TOTAL_BYTES: u64 = 64 * 1024 * 1024;
+
+/// Only files a classic skin can contain are read.
+fn is_skin_file(base: &str) -> bool {
+    let Some((stem, ext)) = base.rsplit_once('.') else { return false };
+    match ext {
+        "bmp" | "png" => Sheet::ALL.iter().any(|s| s.file_stem() == stem),
+        "txt" => matches!(stem, "viscolor" | "pledit" | "region"),
+        "cur" | "ani" => CursorKind::ALL.iter().any(|c| c.file_stem() == stem),
+        _ => false,
+    }
+}
+
 fn collect_dir(dir: &Path, out: &mut HashMap<String, Vec<u8>>, depth: u32) {
     let Ok(rd) = std::fs::read_dir(dir) else { return };
     let mut paths: Vec<_> = rd.flatten().map(|e| e.path()).collect();
@@ -322,10 +346,15 @@ fn collect_dir(dir: &Path, out: &mut HashMap<String, Vec<u8>>, depth: u32) {
             if depth < 2 {
                 collect_dir(&p, out, depth + 1);
             }
-        } else if let Some(n) = p.file_name()
-            && let Ok(b) = std::fs::read(&p)
-        {
-            out.insert(n.to_string_lossy().to_ascii_lowercase(), b);
+        } else if let Some(n) = p.file_name() {
+            let base = n.to_string_lossy().to_ascii_lowercase();
+            let small = std::fs::metadata(&p).map(|m| m.len() <= MAX_FILE_BYTES).unwrap_or(false);
+            if is_skin_file(&base)
+                && small
+                && let Ok(b) = std::fs::read(&p)
+            {
+                out.insert(base, b);
+            }
         }
     }
 }
@@ -583,6 +612,15 @@ mod tests {
         assert!(m[3 * 6 + 3]);
         assert!(!m[4 * 6 + 4]);
         assert!(!m[5]);
+    }
+
+    #[test]
+    fn skin_file_filter() {
+        assert!(is_skin_file("main.bmp"));
+        assert!(is_skin_file("pledit.txt"));
+        assert!(is_skin_file("eqslid.cur"));
+        assert!(!is_skin_file("readme.txt"));
+        assert!(!is_skin_file("huge.bin"));
     }
 
     #[test]

@@ -134,7 +134,8 @@ pub struct Resampler {
 
 impl Resampler {
     pub fn new(in_rate: u32, out_rate: u32) -> Resampler {
-        let step = in_rate as f64 / out_rate as f64;
+        // Rates are validated by the decoder; keep the step sane regardless.
+        let step = (in_rate.max(1) as f64 / out_rate.max(1) as f64).clamp(1.0 / 64.0, 64.0);
         let half_taps = 16usize;
         let phases = 512usize;
         let cutoff = if step > 1.0 { 0.97 / step } else { 0.97 };

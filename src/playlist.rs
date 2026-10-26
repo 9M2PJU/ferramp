@@ -32,6 +32,12 @@ impl Entry {
     }
 }
 
+/// Remove line breaks and other control characters (tags and stream
+/// headers are untrusted and titles end up in playlist files).
+pub fn clean_title(t: &str) -> String {
+    t.chars().map(|c| if c.is_control() { ' ' } else { c }).collect::<String>().trim().to_string()
+}
+
 pub fn default_title(source: &Source) -> String {
     match source {
         Source::File(p) => p
@@ -89,7 +95,7 @@ impl Playlist {
         let has_info = title.is_some();
         Entry {
             id: self.next_id,
-            title: title.unwrap_or_else(|| default_title(&source)),
+            title: clean_title(&title.unwrap_or_else(|| default_title(&source))),
             has_info,
             source,
             duration,
@@ -129,7 +135,7 @@ impl Playlist {
         if let Some(i) = self.index_of(id) {
             let e = &mut self.entries[i];
             if let Some(t) = title {
-                e.title = t;
+                e.title = clean_title(&t);
             }
             if duration.is_some() {
                 e.duration = duration;
@@ -406,14 +412,18 @@ impl Playlist {
         let base = path.parent().map(|p| p.to_path_buf()).unwrap_or_default();
         let mut s = String::from("#EXTM3U\n");
         for e in &self.entries {
+            // A path with a line break cannot be represented in M3U.
+            if e.location().contains(['\n', '\r']) {
+                continue;
+            }
             let secs = e.duration.map(|d| d.round() as i64).unwrap_or(-1);
-            s.push_str(&format!("#EXTINF:{},{}\n", secs, e.title));
+            s.push_str(&format!("#EXTINF:{},{}\n", secs, clean_title(&e.title)));
             match &e.source {
                 Source::File(p) => {
                     let rel = p.strip_prefix(&base).map(|r| r.to_path_buf()).unwrap_or_else(|_| p.clone());
                     s.push_str(&rel.to_string_lossy());
                 }
-                Source::Url(u) => s.push_str(u),
+                Source::Url(u) => s.push_str(&clean_title(u)),
             }
             s.push('\n');
         }
@@ -424,8 +434,8 @@ impl Playlist {
         let mut s = String::from("[playlist]\n");
         for (i, e) in self.entries.iter().enumerate() {
             let n = i + 1;
-            s.push_str(&format!("File{n}={}\n", e.location()));
-            s.push_str(&format!("Title{n}={}\n", e.title));
+            s.push_str(&format!("File{n}={}\n", clean_title(&e.location())));
+            s.push_str(&format!("Title{n}={}\n", clean_title(&e.title)));
             s.push_str(&format!("Length{n}={}\n", e.duration.map(|d| d.round() as i64).unwrap_or(-1)));
         }
         s.push_str(&format!("NumberOfEntries={}\nVersion=2\n", self.entries.len()));
@@ -590,6 +600,14 @@ mod tests {
         let items = parse_pls(pls, Path::new("/x"));
         assert_eq!(items[1].0, Source::File(PathBuf::from("/x/b.ogg")));
         assert_eq!(items[0].2, Some(5.0));
+    }
+
+    #[test]
+    fn titles_are_single_line() {
+        assert_eq!(clean_title("a\r\nhttp://evil\tb"), "a  http://evil b");
+        let mut p = Playlist::new();
+        p.append(vec![(Source::File(PathBuf::from("/x.mp3")), Some("A\nB".into()), None)]);
+        assert_eq!(p.entries[0].title, "A B");
     }
 
     #[test]

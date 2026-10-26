@@ -46,16 +46,25 @@ impl Source {
 }
 
 pub fn percent_decode(s: &str) -> String {
+    fn hex(c: u8) -> Option<u8> {
+        match c {
+            b'0'..=b'9' => Some(c - b'0'),
+            b'a'..=b'f' => Some(c - b'a' + 10),
+            b'A'..=b'F' => Some(c - b'A' + 10),
+            _ => None,
+        }
+    }
     let b = s.as_bytes();
     let mut out = Vec::with_capacity(b.len());
     let mut i = 0;
     while i < b.len() {
-        if b[i] == b'%' && i + 2 < b.len() {
-            if let Ok(v) = u8::from_str_radix(&s[i + 1..i + 3], 16) {
-                out.push(v);
-                i += 3;
-                continue;
-            }
+        if b[i] == b'%'
+            && i + 2 < b.len()
+            && let (Some(h), Some(l)) = (hex(b[i + 1]), hex(b[i + 2]))
+        {
+            out.push(h * 16 + l);
+            i += 3;
+            continue;
         }
         out.push(b[i]);
         i += 1;
@@ -548,6 +557,9 @@ fn decode(ctx: &DecodeCtx) -> Result<(), String> {
         .make_audio_decoder(&params, &AudioDecoderOptions::default())
         .map_err(|e| format!("unsupported codec ({e})"))?;
     let in_rate = params.sample_rate.unwrap_or(44100);
+    if !(1000..=768_000).contains(&in_rate) {
+        return Err(format!("unsupported sample rate {in_rate} Hz"));
+    }
     let channels = params.channels.as_ref().map(|c| c.count()).unwrap_or(2) as u32;
     let duration = match (track.time_base, track.duration) {
         (Some(tb), Some(d)) => tb.calc_duration(d).map(|t| t.as_secs_f64()),

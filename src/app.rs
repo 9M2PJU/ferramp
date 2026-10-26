@@ -212,7 +212,7 @@ impl App {
         let _ = std::fs::write(dir.join("ferramp.q2"), config::write_eqf_library(&self.eq_auto_presets));
         let mut m3u = String::from("#EXTM3U\n");
         for (t, l) in &self.bookmarks {
-            m3u.push_str(&format!("#EXTINF:-1,{t}\n{l}\n"));
+            m3u.push_str(&format!("#EXTINF:-1,{}\n{}\n", playlist::clean_title(t), playlist::clean_title(l)));
         }
         let _ = std::fs::write(dir.join("bookmarks.m3u"), m3u);
     }
@@ -1501,7 +1501,7 @@ impl App {
                     }
                 }
                 AudioEvent::StreamTitle(t) => {
-                    self.st.now.stream_title = Some(t);
+                    self.st.now.stream_title = Some(playlist::clean_title(&t));
                     self.st.dirty = true;
                 }
             }
