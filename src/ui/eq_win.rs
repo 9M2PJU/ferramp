@@ -329,7 +329,7 @@ pub fn draw_graph(st: &State, out: &mut Bitmap, gx: i32, gy: i32) {
     // row per dB around the middle row), sampled per pixel and joined with
     // line segments. Parameters fitted to the original's output.
     let rows: Vec<f64> = st.eq.bands.iter().map(|&v| 9.0 - 0.75 * crate::audio::dsp::slider_to_db(v)).collect();
-    let ys: Vec<i32> = (0..109).map(|x| catmull_rom(&rows, x as f64 - 0.5, 0.4).floor() as i32).map(|y| y.clamp(0, 18)).collect();
+    let ys: Vec<i32> = (0..109).map(|x| (catmull_rom(&rows, x as f64 - 0.5, 0.4) + 1e-6).floor() as i32).map(|y| y.clamp(0, 18)).collect();
     let mut plot = |x: i32, y: i32| {
         let c = skin.sprite_pixel(sp::EQ_GRAPH_LINE_COLORS, 0, y);
         // Skins whose eqmain.bmp lacks the colour strip draw no curve.
