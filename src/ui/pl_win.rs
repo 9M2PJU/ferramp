@@ -872,3 +872,61 @@ pub fn ensure_visible(st: &mut State, idx: usize) {
         st.playlist.scroll = idx + 1 - rows;
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::audio::{Engine, Source};
+    use crate::skin::Skin;
+
+    fn state(rows: usize, size: (i32, i32)) -> State {
+        let mut st = State::new(Engine::headless(), Skin::builtin());
+        st.pl_size = size;
+        let items = (0..rows).map(|i| (Source::File(format!("/m/{i}.mp3").into()), Some(format!("Track {i}")), Some(60.0))).collect();
+        st.playlist.append(items);
+        st
+    }
+
+    #[test]
+    fn geometry_and_hits() {
+        let st = state(30, (0, 4));
+        let g = Geometry::of(&st);
+        assert_eq!((g.w, g.h), (275, 232));
+        assert_eq!(g.visible_rows(), 13);
+        let w = PlWin::new();
+        assert_eq!(w.hit(&st, 50, LIST_TOP + LIST_PAD_TOP + 1), Widget::Row(0));
+        assert_eq!(w.hit(&st, 50, LIST_TOP + LIST_PAD_TOP + ROW_H * 2 + 1), Widget::Row(2));
+        assert_eq!(w.hit(&st, 20, g.h - 25), Widget::MenuButton(PopMenu::Add));
+        assert_eq!(w.hit(&st, g.w - 35, g.h - 25), Widget::MenuButton(PopMenu::List));
+        assert_eq!(w.hit(&st, g.w - 5, g.h - 5), Widget::Resize);
+        assert_eq!(w.hit(&st, g.w - 7, 6), Widget::Close);
+        assert_eq!(w.hit(&st, 100, 5), Widget::TitleBar);
+    }
+
+    #[test]
+    fn menus_open_over_their_button() {
+        let st = state(1, (2, 0));
+        let g = Geometry::of(&st);
+        for m in [PopMenu::Add, PopMenu::Remove, PopMenu::Select, PopMenu::Misc, PopMenu::List] {
+            let last = m.items().len() - 1;
+            assert_eq!(g.menu_item_rect(m, last), g.menu_button(m));
+            assert!(g.menu_item_rect(m, 0).y >= 0);
+        }
+    }
+
+    #[test]
+    fn scrolling_keeps_selection_visible() {
+        let mut st = state(40, (0, 0));
+        ensure_visible(&mut st, 30);
+        let rows = Geometry::of(&st).visible_rows();
+        assert!(st.playlist.scroll <= 30 && 30 < st.playlist.scroll + rows);
+        ensure_visible(&mut st, 0);
+        assert_eq!(st.playlist.scroll, 0);
+    }
+
+    #[test]
+    fn long_running_times() {
+        assert_eq!(format_long_time(59.0), "0:59");
+        assert_eq!(format_long_time(7200.0), "2:00:00");
+    }
+}
