@@ -32,10 +32,46 @@ pub struct Fonts {
 }
 
 impl Fonts {
+    /// Fonts for menus and dialogs: Tahoma when installed (what the
+    /// original's menus used), else the bundled Liberation Sans.
     pub fn new() -> Fonts {
+        Fonts::with_preferred(&["tahoma.ttf"], &["tahomabd.ttf"])
+    }
+
+    /// Fonts for the playlist: Arial when installed (the font classic skins
+    /// name in pledit.txt), else the metric-compatible bundled font.
+    pub fn new_list() -> Fonts {
+        Fonts::with_preferred(&["arial.ttf"], &["arialbd.ttf"])
+    }
+
+    fn with_preferred(regular: &[&str], bold: &[&str]) -> Fonts {
+        let load = |names: &[&str], fallback: &'static [u8]| -> swash::FontRef<'static> {
+            if std::env::var_os("FERRAMP_BUNDLED_FONTS").is_none() {
+                for dir in system_font_dirs() {
+                    let Ok(rd) = std::fs::read_dir(&dir) else { continue };
+                    // Font file names differ in case between systems (Arial.TTF, arial.ttf).
+                    let files: Vec<std::path::PathBuf> = rd.flatten().map(|e| e.path()).collect();
+                    for n in names {
+                        let Some(p) = files.iter().find(|f| {
+                            f.file_name().map(|x| x.to_string_lossy().eq_ignore_ascii_case(n)).unwrap_or(false)
+                        }) else {
+                            continue;
+                        };
+                        if let Ok(bytes) = std::fs::read(p) {
+                            // Fonts live for the whole program.
+                            let bytes: &'static [u8] = Box::leak(bytes.into_boxed_slice());
+                            if let Some(f) = swash::FontRef::from_index(bytes, 0) {
+                                return f;
+                            }
+                        }
+                    }
+                }
+            }
+            swash::FontRef::from_index(fallback, 0).expect("bundled font")
+        };
         Fonts {
-            regular: swash::FontRef::from_index(REGULAR, 0).expect("bundled font"),
-            bold: swash::FontRef::from_index(BOLD, 0).expect("bundled font"),
+            regular: load(regular, REGULAR),
+            bold: load(bold, BOLD),
             ctx: RefCell::new(swash::scale::ScaleContext::new()),
             cache: RefCell::new(HashMap::new()),
         }
@@ -167,6 +203,26 @@ impl Fonts {
         out.push_str(ell);
         out
     }
+}
+
+fn system_font_dirs() -> Vec<std::path::PathBuf> {
+    let mut v = Vec::new();
+    if cfg!(windows) {
+        let windir = std::env::var_os("WINDIR").map(std::path::PathBuf::from).unwrap_or_else(|| "C:\\Windows".into());
+        v.push(windir.join("Fonts"));
+    } else if cfg!(target_os = "macos") {
+        v.push("/System/Library/Fonts/Supplemental".into());
+        v.push("/Library/Fonts".into());
+    } else {
+        for d in ["/usr/share/fonts/TTF", "/usr/share/fonts/truetype/msttcorefonts", "/usr/share/fonts/msttcore", "/usr/share/fonts/truetype/msttcorefonts/"] {
+            v.push(d.into());
+        }
+        if let Some(h) = dirs::home_dir() {
+            v.push(h.join(".fonts"));
+            v.push(h.join(".local/share/fonts"));
+        }
+    }
+    v
 }
 
 pub fn blend(bg: u32, fg: u32, a: u8) -> u32 {

@@ -463,9 +463,8 @@ impl PlWin {
         let list = g.list_rect();
         let style = &st.skin.playlist;
         let n = st.playlist.len();
-        let digits = n.max(1).to_string().len();
         let rows = g.visible_rows();
-        let fonts = &st.fonts;
+        let fonts = &st.list_fonts;
         // Duration column width.
         let mut dur_w = 0;
         for i in st.playlist.scroll..(st.playlist.scroll + rows).min(n) {
@@ -491,13 +490,12 @@ impl PlWin {
             let ty = y;
             let dur_x = list.x + list.w - 3;
             let title_clip_w = list.w - dur_w - 8;
-            let num = format!("{:>width$}. ", idx + 1, width = digits).replace(' ', "\u{2007}");
-            let label = format!("{num}{}", e.title);
+            let label = format!("{}. {}", idx + 1, e.title);
             let label = fonts.ellipsize(&label, FONT_PX, Weight::Regular, title_clip_w.max(10));
             fonts.draw(
                 out,
                 &label,
-                list.x + 2,
+                list.x,
                 ty,
                 FONT_PX,
                 Weight::Regular,

@@ -50,6 +50,7 @@ pub struct State {
     pub playlist: Playlist,
     pub skin: Skin,
     pub fonts: Fonts,
+    pub list_fonts: Fonts,
 
     pub volume: u8,
     pub balance: i8,
@@ -103,6 +104,7 @@ impl State {
             playlist: Playlist::new(),
             skin,
             fonts: Fonts::new(),
+            list_fonts: Fonts::new_list(),
             volume: 78,
             balance: 0,
             shuffle: false,
