@@ -802,7 +802,6 @@ impl App {
                     self.drag = Some(Drag::Resize { start_cursor: start, start_size: self.st.pl_size });
                     self.capture = Some(k);
                 }
-                WmRequest::SetCursor(_) => {}
             }
         }
         if self.st.dirty {
@@ -1481,6 +1480,7 @@ impl App {
             self.st.now.duration = Some(d);
         }
         self.st.error = None;
+        self.st.working = true;
         self.st.vis.reset();
         self.st.marquee_step = 0;
         self.st.marquee_drag = 0;
@@ -1519,6 +1519,7 @@ impl App {
             match ev {
                 AudioEvent::Opened { duration, kbps, khz, channels, stream_name } => {
                     self.errors_in_row = 0;
+                    self.st.working = false;
                     let st = &mut self.st;
                     if duration.is_some() {
                         st.now.duration = duration;
@@ -1541,8 +1542,8 @@ impl App {
                     }
                     st.dirty = true;
                 }
-                AudioEvent::Ended => self.track_finished(),
                 AudioEvent::Error(e) => {
+                    self.st.working = false;
                     self.errors_in_row += 1;
                     self.st.engine.mark_stopped();
                     self.st.show_message(e.clone(), 3.0);
@@ -1605,7 +1606,7 @@ impl App {
                 }
             }
             Cmd::StopAfterCurrent => st.stop_after_current = !st.stop_after_current,
-            Cmd::Next | Cmd::Previous | Cmd::NextN(_) | Cmd::StartOfList | Cmd::EndOfList => {
+            Cmd::Next | Cmd::Previous | Cmd::NextN(_) | Cmd::StartOfList => {
                 let (shuffle, repeat) = (st.shuffle, st.repeat);
                 let n = st.playlist.len();
                 if n == 0 {
@@ -1618,8 +1619,7 @@ impl App {
                         let c = st.playlist.current.unwrap_or(0) as i64;
                         Some((c + k as i64).clamp(0, n as i64 - 1) as usize)
                     }
-                    Cmd::StartOfList => Some(0),
-                    _ => Some(n - 1),
+                    _ => Some(0),
                 };
                 let _ = repeat;
                 if let Some(t) = target {
@@ -1788,20 +1788,8 @@ impl App {
                 st.eq.bands = [v; 10];
                 st.engine.set_eq(st.eq);
             }
-            Cmd::EqPreset(i) => {
-                if let Some((_, p, b)) = self.eqf_presets.get(i) {
-                    st.eq.preamp = *p;
-                    st.eq.bands = *b;
-                    st.engine.set_eq(st.eq);
-                }
-            }
             Cmd::EqLoadEqf => self.pick(Pick::LoadEqf),
             Cmd::EqSaveEqf => self.pick(Pick::SaveEqf),
-            Cmd::EqReset => {
-                st.eq.preamp = 31;
-                st.eq.bands = [31; 10];
-                st.engine.set_eq(st.eq);
-            }
             Cmd::PlAddFiles => self.pick(Pick::AddFiles),
             Cmd::PlAddFolder => self.pick(Pick::AddFolder),
             Cmd::PlAddUrl => self.open_dialog(el, Dialog::open_url(true)),
@@ -1896,11 +1884,6 @@ impl App {
             }
             Cmd::EqLibrary(op) => self.eq_lib(op, el),
             Cmd::EqLibCommit(op, name) => self.eq_lib_commit(op, name),
-            Cmd::DropFiles(k, paths, at) => match (k, at) {
-                (WinKind::Playlist, Some(at)) => self.insert_paths(paths, at),
-                (WinKind::Playlist, None) => self.open_paths(paths, false),
-                _ => self.open_paths(paths, true),
-            },
         }
     }
 
@@ -2398,11 +2381,9 @@ impl ApplicationHandler<UserEvent> for App {
                 self.update_cursor(k);
             }
             WindowEvent::MouseWheel { delta, .. } => {
-                let pos = self.wins.get(&k).map(|w| w.cursor).unwrap_or_default();
-                let (x, y) = self.to_skin(k, pos);
                 let d = wheel_steps(delta);
                 if d != 0 {
-                    self.window_mouse(k, MouseEvent::Wheel { x, y, delta: d });
+                    self.window_mouse(k, MouseEvent::Wheel { delta: d });
                 }
             }
             WindowEvent::KeyboardInput { event, .. } => {

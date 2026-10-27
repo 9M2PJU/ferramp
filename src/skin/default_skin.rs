@@ -68,7 +68,6 @@ pub fn build() -> Skin {
     put(Sheet::EqMain, eqmain_bmp());
     put(Sheet::EqEx, eq_ex_bmp());
     put(Sheet::PlEdit, pledit_bmp());
-    put(Sheet::Gen, gen_bmp());
     Skin::from_parts(sheets, DEFAULT_VISCOLORS)
 }
 
@@ -80,11 +79,6 @@ fn bevel(b: &mut Bitmap, x: i32, y: i32, w: i32, h: i32, hi: u32, lo: u32) {
     b.vline(x, y, h, hi);
     b.hline(x, y + h - 1, w, lo);
     b.vline(x + w - 1, y, h, lo);
-}
-
-fn panel(b: &mut Bitmap, x: i32, y: i32, w: i32, h: i32, fill: u32) {
-    b.fill_rect(x, y, w, h, fill);
-    bevel(b, x, y, w, h, BODY_HI, BODY_LO);
 }
 
 fn sunken(b: &mut Bitmap, x: i32, y: i32, w: i32, h: i32, fill: u32) {
@@ -965,30 +959,6 @@ fn pl_bottom(b: &mut Bitmap, x: i32, y: i32, w: i32) {
     body_texture(b, x, y, w, 38);
     b.hline(x, y, w, BODY_LO);
     b.hline(x, y + 37, w, BODY_DARK);
-}
-
-// ---------------------------------------------------------------------------
-// gen.bmp: frame for generic windows (194 x 109).
-
-fn gen_bmp() -> Bitmap {
-    let mut b = Bitmap::new(194, 109, TRANSPARENT);
-    for (y, active) in [(0, true), (21, false)] {
-        let (top, bottom) = if active { (rgb(70, 74, 120), rgb(36, 38, 70)) } else { (rgb(64, 66, 82), rgb(40, 41, 52)) };
-        for i in 0..6 {
-            let x = i * 26;
-            vgradient(&mut b, x, y, 25, 20, top, bottom);
-            b.fill_rect(x, y + 14, 25, 6, BODY);
-        }
-    }
-    b.fill_rect(0, 42, 125, 14, BODY);
-    b.fill_rect(0, 57, 125, 14, BODY);
-    b.fill_rect(127, 72, 25, 14, BODY);
-    b.fill_rect(127, 42, 11, 29, BODY);
-    b.fill_rect(158, 42, 11, 24, BODY);
-    b.fill_rect(139, 42, 8, 29, BODY);
-    b.fill_rect(170, 42, 8, 24, BODY);
-    title_button(&mut b, 148, 42, 'x', true, true);
-    b
 }
 
 #[cfg(test)]

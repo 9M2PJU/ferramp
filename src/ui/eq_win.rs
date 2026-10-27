@@ -300,13 +300,6 @@ impl EqWin {
         }
         st.push(Cmd::SetBalance(b as i8));
     }
-
-    pub fn cancel(&mut self, st: &mut State) {
-        if self.pressed.take().is_some() {
-            st.focus = None;
-            st.dirty = true;
-        }
-    }
 }
 
 fn slider_y(v: u8) -> i32 {

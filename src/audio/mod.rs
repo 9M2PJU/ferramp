@@ -83,8 +83,6 @@ pub enum Status {
 pub enum Event {
     /// The track opened; values are what the display shows.
     Opened { duration: Option<f64>, kbps: u32, khz: u32, channels: u32, stream_name: Option<String> },
-    /// The current track finished playing through.
-    Ended,
     Error(String),
     StreamTitle(String),
 }

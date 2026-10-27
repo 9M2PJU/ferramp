@@ -130,8 +130,8 @@ mod imp {
 mod imp {
     use winit::raw_window_handle::{HasWindowHandle, RawWindowHandle};
     use windows_sys::Win32::Foundation::POINT;
-    use windows_sys::Win32::Graphics::Gdi::{CombineRgn, CreateRectRgn, DeleteObject, RGN_OR};
-    use windows_sys::Win32::UI::WindowsAndMessaging::{GetCursorPos, SetWindowRgn};
+    use windows_sys::Win32::Graphics::Gdi::{CombineRgn, CreateRectRgn, DeleteObject, RGN_OR, SetWindowRgn};
+    use windows_sys::Win32::UI::WindowsAndMessaging::GetCursorPos;
     use winit::window::Window;
 
     pub fn global_cursor() -> Option<(i32, i32)> {

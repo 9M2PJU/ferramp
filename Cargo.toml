@@ -18,9 +18,14 @@ swash = "0.2"
 rfd = "0.17"
 lofty = "0.25"
 dirs = "7"
-ureq = "3"
+ureq = { version = "3", default-features = false, features = ["gzip"] }
 rtrb = "0.4"
 arboard = { version = "3", default-features = false }
+
+[features]
+default = ["https"]
+# TLS for https:// streams (needs a C compiler for the target when cross-building).
+https = ["ureq/rustls"]
 
 [target.'cfg(all(unix, not(target_os = "macos")))'.dependencies]
 x11rb = { version = "0.14", features = ["shape"] }

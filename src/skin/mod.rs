@@ -138,7 +138,6 @@ pub struct CursorImage {
 }
 
 pub struct Skin {
-    pub name: String,
     pub path: Option<PathBuf>,
     sheets: Vec<Option<Bitmap>>,
     /// Which sheets came from the skin itself (rather than the fallback).
@@ -182,22 +181,6 @@ impl Skin {
         self.sheet(sp.sheet).map(|b| b.get(sp.x + x, sp.y + y)).unwrap_or(0)
     }
 
-    /// Draw a string with the skin's text.bmp font. Unknown glyphs leave a gap.
-    pub fn draw_text(&self, dst: &mut Bitmap, text: &str, x: i32, y: i32) {
-        let mut cx = x;
-        for c in text.chars() {
-            if let Some(sp) = sprites::text_char(c) {
-                self.draw(dst, sp, cx, y);
-            }
-            cx += 5;
-        }
-    }
-
-    /// Background colour of the text font (the colour of its blank cell).
-    pub fn text_background(&self) -> u32 {
-        self.sheet(Sheet::Text).map(|b| b.get(150 + 2, 2)).unwrap_or(0xFF00_0000)
-    }
-
     pub fn builtin() -> Skin {
         default_skin::build()
     }
@@ -206,10 +189,6 @@ impl Skin {
     /// to `base` for anything the skin does not provide.
     pub fn load(path: &Path, base: &Skin) -> Result<Skin, String> {
         let files = SkinFiles::open(path)?;
-        let name = path
-            .file_stem()
-            .map(|s| s.to_string_lossy().into_owned())
-            .unwrap_or_else(|| "Skin".into());
         let mut sheets = Vec::new();
         let mut own = Vec::new();
         for sheet in Sheet::ALL {
@@ -241,13 +220,12 @@ impl Skin {
                 cursors.insert(kind, c);
             }
         }
-        Ok(Skin { name, path: Some(path.to_path_buf()), sheets, own, viscolors, playlist, regions, cursors })
+        Ok(Skin { path: Some(path.to_path_buf()), sheets, own, viscolors, playlist, regions, cursors })
     }
 
     pub(crate) fn from_parts(sheets: Vec<Option<Bitmap>>, viscolors: [u32; 24]) -> Skin {
         let own = sheets.iter().map(|s| s.is_some()).collect();
         Skin {
-            name: "Base Skin".into(),
             path: None,
             sheets,
             own,

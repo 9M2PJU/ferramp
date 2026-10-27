@@ -265,6 +265,7 @@ impl MainWin {
             vis_dots(out, &st.skin.viscolors, 36, 26, 10, 13);
         }
         match status {
+            Status::Playing if st.working => skin.draw(out, sp::MAIN_WORKING_INDICATOR, 24, 28),
             Status::Playing => {
                 skin.draw(out, sp::MAIN_PLAYING_INDICATOR, 26, 28);
                 skin.draw(out, sp::MAIN_NOT_WORKING_INDICATOR, 24, 28);
@@ -638,18 +639,6 @@ impl MainWin {
         let t = pos as f64 / travel as f64 * d;
         st.focus = Some(Focus::Position(t));
         st.dirty = true;
-    }
-
-    pub fn is_dragging(&self) -> bool {
-        self.pressed.is_some()
-    }
-
-    pub fn cancel(&mut self, st: &mut State) {
-        if self.pressed.take().is_some() {
-            st.focus = None;
-            st.marquee_dragging = false;
-            st.dirty = true;
-        }
     }
 
     pub fn wants_animation(&self, st: &State) -> bool {

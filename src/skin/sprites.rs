@@ -21,11 +21,10 @@ pub enum Sheet {
     EqMain,
     EqEx,
     PlEdit,
-    Gen,
 }
 
 impl Sheet {
-    pub const ALL: [Sheet; 16] = [
+    pub const ALL: [Sheet; 15] = [
         Sheet::Main,
         Sheet::CButtons,
         Sheet::TitleBar,
@@ -41,7 +40,6 @@ impl Sheet {
         Sheet::EqMain,
         Sheet::EqEx,
         Sheet::PlEdit,
-        Sheet::Gen,
     ];
 
     /// Base file name inside a skin archive (without extension).
@@ -62,7 +60,6 @@ impl Sheet {
             Sheet::EqMain => "eqmain",
             Sheet::EqEx => "eq_ex",
             Sheet::PlEdit => "pledit",
-            Sheet::Gen => "gen",
         }
     }
 
@@ -163,7 +160,6 @@ pub const MAIN_SHADE_BUTTON_DEPRESSED: Sprite = s(TitleBar, 9, 18, 9, 9);
 pub const MAIN_CLOSE_BUTTON: Sprite = s(TitleBar, 18, 0, 9, 9);
 pub const MAIN_CLOSE_BUTTON_DEPRESSED: Sprite = s(TitleBar, 18, 9, 9, 9);
 pub const MAIN_CLUTTER_BAR_BACKGROUND: Sprite = s(TitleBar, 304, 0, 8, 43);
-pub const MAIN_CLUTTER_BAR_BACKGROUND_DISABLED: Sprite = s(TitleBar, 312, 0, 8, 43);
 pub const MAIN_CLUTTER_BAR_BUTTON_O_SELECTED: Sprite = s(TitleBar, 304, 47, 8, 8);
 pub const MAIN_CLUTTER_BAR_BUTTON_A_SELECTED: Sprite = s(TitleBar, 312, 55, 8, 7);
 pub const MAIN_CLUTTER_BAR_BUTTON_I_SELECTED: Sprite = s(TitleBar, 320, 62, 8, 7);
@@ -193,7 +189,6 @@ pub const EQ_TITLE_BAR_SELECTED: Sprite = s(EqMain, 0, 134, 275, 14);
 pub const EQ_SLIDER_BACKGROUND: Sprite = s(EqMain, 13, 164, 209, 129);
 pub const EQ_SLIDER_THUMB: Sprite = s(EqMain, 0, 164, 11, 11);
 pub const EQ_SLIDER_THUMB_SELECTED: Sprite = s(EqMain, 0, 176, 11, 11);
-pub const EQ_CLOSE_BUTTON: Sprite = s(EqMain, 0, 116, 9, 9);
 pub const EQ_CLOSE_BUTTON_ACTIVE: Sprite = s(EqMain, 0, 125, 9, 9);
 pub const EQ_MAXIMIZE_BUTTON_ACTIVE_FALLBACK: Sprite = s(EqMain, 254, 152, 9, 9);
 pub const EQ_ON_BUTTON: Sprite = s(EqMain, 10, 119, 26, 12);
@@ -221,7 +216,6 @@ pub const EQ_SHADE_BALANCE_SLIDER_CENTER: Sprite = s(EqEx, 14, 30, 3, 7);
 pub const EQ_SHADE_BALANCE_SLIDER_RIGHT: Sprite = s(EqEx, 17, 30, 3, 7);
 pub const EQ_MAXIMIZE_BUTTON_ACTIVE: Sprite = s(EqEx, 1, 38, 9, 9);
 pub const EQ_MINIMIZE_BUTTON_ACTIVE: Sprite = s(EqEx, 1, 47, 9, 9);
-pub const EQ_SHADE_CLOSE_BUTTON: Sprite = s(EqEx, 11, 38, 9, 9);
 pub const EQ_SHADE_CLOSE_BUTTON_ACTIVE: Sprite = s(EqEx, 11, 47, 9, 9);
 
 // pledit.bmp
@@ -285,28 +279,6 @@ pub const PLAYLIST_LIST_BAR: Sprite = s(PlEdit, 250, 111, 3, 54);
 pub const PLAYLIST_CLOSE_SELECTED: Sprite = s(PlEdit, 52, 42, 9, 9);
 pub const PLAYLIST_COLLAPSE_SELECTED: Sprite = s(PlEdit, 62, 42, 9, 9);
 pub const PLAYLIST_EXPAND_SELECTED: Sprite = s(PlEdit, 150, 42, 9, 9);
-
-// gen.bmp (generic window frame, used by our extra windows)
-pub const GEN_TOP_LEFT_SELECTED: Sprite = s(Gen, 0, 0, 25, 20);
-pub const GEN_TOP_LEFT_END_SELECTED: Sprite = s(Gen, 26, 0, 25, 20);
-pub const GEN_TOP_CENTER_FILL_SELECTED: Sprite = s(Gen, 52, 0, 25, 20);
-pub const GEN_TOP_RIGHT_END_SELECTED: Sprite = s(Gen, 78, 0, 25, 20);
-pub const GEN_TOP_LEFT_RIGHT_FILL_SELECTED: Sprite = s(Gen, 104, 0, 25, 20);
-pub const GEN_TOP_RIGHT_SELECTED: Sprite = s(Gen, 130, 0, 25, 20);
-pub const GEN_TOP_LEFT: Sprite = s(Gen, 0, 21, 25, 20);
-pub const GEN_TOP_LEFT_END: Sprite = s(Gen, 26, 21, 25, 20);
-pub const GEN_TOP_CENTER_FILL: Sprite = s(Gen, 52, 21, 25, 20);
-pub const GEN_TOP_RIGHT_END: Sprite = s(Gen, 78, 21, 25, 20);
-pub const GEN_TOP_LEFT_RIGHT_FILL: Sprite = s(Gen, 104, 21, 25, 20);
-pub const GEN_TOP_RIGHT: Sprite = s(Gen, 130, 21, 25, 20);
-pub const GEN_BOTTOM_LEFT: Sprite = s(Gen, 0, 42, 125, 14);
-pub const GEN_BOTTOM_RIGHT: Sprite = s(Gen, 0, 57, 125, 14);
-pub const GEN_BOTTOM_FILL: Sprite = s(Gen, 127, 72, 25, 14);
-pub const GEN_MIDDLE_LEFT: Sprite = s(Gen, 127, 42, 11, 29);
-pub const GEN_MIDDLE_LEFT_BOTTOM: Sprite = s(Gen, 158, 42, 11, 24);
-pub const GEN_MIDDLE_RIGHT: Sprite = s(Gen, 139, 42, 8, 29);
-pub const GEN_MIDDLE_RIGHT_BOTTOM: Sprite = s(Gen, 170, 42, 8, 24);
-pub const GEN_CLOSE_SELECTED: Sprite = s(Gen, 148, 42, 9, 9);
 
 /// Position of a character in text.bmp as (row, column). Each glyph is 5x6.
 pub fn font_cell(c: char) -> Option<(i32, i32)> {

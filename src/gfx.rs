@@ -116,12 +116,6 @@ impl Bitmap {
         }
     }
 
-    pub fn sub(&self, x: i32, y: i32, w: i32, h: i32) -> Bitmap {
-        let mut out = Bitmap::new(w, h, TRANSPARENT);
-        out.blit(self, x, y, w, h, 0, 0);
-        out
-    }
-
     /// Draw a 1px rectangle outline.
     pub fn rect_outline(&mut self, x: i32, y: i32, w: i32, h: i32, c: u32) {
         self.fill_rect(x, y, w, 1, c);

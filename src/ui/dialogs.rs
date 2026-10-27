@@ -21,7 +21,6 @@ pub enum DialogKind {
     FileInfo,
     SkinBrowser,
     Preferences,
-    Message,
     EqPresets,
     Bookmarks,
     PlaylistEntry,
@@ -317,14 +316,6 @@ impl Dialog {
         let mut d = Dialog::new(DialogKind::Preferences, "Preferences", 320, 184, c);
         d.prefs = p;
         d
-    }
-
-    pub fn message(title: &str, text: &str) -> Dialog {
-        let c = vec![
-            Control::Label { text: text.into(), rect: r(16, 18, 330, 14), bold: false },
-            Control::Button { label: "OK".into(), rect: r(142, 46, 75, 23), id: "ok", default: true },
-        ];
-        Dialog::new(DialogKind::Message, title, 360, 80, c)
     }
 
     fn input_text(&self) -> String {

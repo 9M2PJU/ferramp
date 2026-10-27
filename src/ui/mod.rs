@@ -10,8 +10,6 @@ pub mod vis;
 
 use std::path::PathBuf;
 
-use crate::skin::CursorKind;
-
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum WinKind {
     Main,
@@ -43,7 +41,7 @@ pub enum MouseEvent {
     Down { x: i32, y: i32, button: Button, double: bool, mods: Mods },
     Move { x: i32, y: i32 },
     Up { x: i32, y: i32, button: Button },
-    Wheel { x: i32, y: i32, delta: i32 },
+    Wheel { delta: i32 },
 }
 
 /// Which pop-up menu to show.
@@ -54,11 +52,7 @@ pub enum MenuId {
     Playback,
     Vis,
     EqPresets,
-    PlaylistAdd,
     PlaylistRemove,
-    PlaylistSelect,
-    PlaylistMisc,
-    PlaylistList,
     PlaylistContext,
     PlaylistSort,
     PlaylistMiscOptions,
@@ -79,7 +73,6 @@ pub enum Cmd {
     Previous,
     NextN(i32),
     StartOfList,
-    EndOfList,
     Eject,
     OpenFiles,
     OpenUrl,
@@ -139,10 +132,8 @@ pub enum Cmd {
     EqSetBand(usize, u8),
     EqSetPreamp(u8),
     EqAll(u8),
-    EqPreset(usize),
     EqLoadEqf,
     EqSaveEqf,
-    EqReset,
     // Playlist editor
     PlAddFiles,
     PlAddFolder,
@@ -164,8 +155,6 @@ pub enum Cmd {
     PlLoad,
     PlScrollBy(i32),
     PlPlaySelected,
-    /// Insert dropped files at a row.
-    DropFiles(WinKind, Vec<PathBuf>, Option<usize>),
 }
 
 /// Operations on the equalizer preset library (named presets) and the
@@ -189,7 +178,6 @@ pub enum WmRequest {
     BeginMove,
     /// Start resizing the playlist with the mouse.
     BeginResize,
-    SetCursor(CursorKind),
 }
 
 /// Text shown for a pressed or dragged control, overriding the song title.

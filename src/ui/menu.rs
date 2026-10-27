@@ -186,7 +186,7 @@ pub fn build(id: MenuId, ctx: &MenuContext) -> Vec<Item> {
         MenuId::PlaylistRemove => vec![
             act("Remove all &dead files", "", Cmd::PlRemoveDead),
         ],
-        MenuId::PlaylistSort | MenuId::PlaylistMisc => vec![
+        MenuId::PlaylistSort => vec![
             act("Sort list by &title", "", Cmd::PlSortTitle),
             act("Sort list by &filename", "", Cmd::PlSortFilename),
             act("Sort list by &path and filename", "", Cmd::PlSortPath),
@@ -198,21 +198,6 @@ pub fn build(id: MenuId, ctx: &MenuContext) -> Vec<Item> {
             act("&Generate HTML playlist", "", Cmd::PlGenerateHtml),
             Item::Sep,
             act("&Read extended info on selection", "", Cmd::PlReadInfo),
-        ],
-        MenuId::PlaylistAdd => vec![
-            act("Add &URL...", "Ctrl+L", Cmd::PlAddUrl),
-            act("Add &directory...", "Shift+L", Cmd::PlAddFolder),
-            act("Add &file(s)...", "L", Cmd::PlAddFiles),
-        ],
-        MenuId::PlaylistSelect => vec![
-            act("Select &all", "Ctrl+A", Cmd::PlSelectAll),
-            act("Select &none", "", Cmd::PlSelectNone),
-            act("&Invert selection", "Ctrl+I", Cmd::PlInvertSelection),
-        ],
-        MenuId::PlaylistList => vec![
-            act("&New playlist", "Ctrl+N", Cmd::PlNew),
-            act("&Save playlist...", "Ctrl+S", Cmd::PlSave),
-            act("&Load playlist...", "Ctrl+O", Cmd::PlLoad),
         ],
         MenuId::PlaylistContext => {
             let any = st.playlist.selected_count() > 0;

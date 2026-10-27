@@ -75,6 +75,8 @@ pub struct State {
     pub llama: bool,
 
     pub now: NowPlaying,
+    /// Opening or buffering a track (shown by the work indicator).
+    pub working: bool,
     pub focus: Option<Focus>,
     pub message: Option<(String, Instant)>,
     pub marquee_step: usize,
@@ -122,6 +124,7 @@ impl State {
             focused: Some(WinKind::Main),
             llama: false,
             now: NowPlaying::default(),
+            working: false,
             focus: None,
             message: None,
             marquee_step: 0,
