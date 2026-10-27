@@ -162,6 +162,7 @@ pub struct App {
     tip: Option<Tooltip>,
     hover_tip: Option<(WinKind, String, Instant)>,
     next_frame: Instant,
+    window_title: String,
 }
 
 impl App {
@@ -215,6 +216,7 @@ impl App {
             tip: None,
             hover_tip: None,
             next_frame: Instant::now(),
+            window_title: String::new(),
         };
         app.apply_settings();
         app.load_libraries();
@@ -1360,6 +1362,20 @@ impl App {
         }
     }
 
+    /// Taskbar title: "N. Title - Ferramp", like the original.
+    fn update_title(&mut self) {
+        let title = match self.st.media_text_short() {
+            Some(t) => format!("{t} - Ferramp"),
+            None => "Ferramp".to_string(),
+        };
+        if title != self.window_title
+            && let Some(w) = self.wins.get(&WinKind::Main)
+        {
+            w.window.set_title(&title);
+            self.window_title = title;
+        }
+    }
+
     // ------------------------------------------------------------------
     // Tooltips
 
@@ -2392,6 +2408,7 @@ impl App {
                 m.os.window.request_redraw();
             }
         }
+        self.update_title();
         if self.last_save.elapsed() > Duration::from_secs(60) {
             self.save_settings();
         }
@@ -2897,6 +2914,17 @@ fn walk(dir: &Path, out: &mut Vec<PathBuf>, depth: u32) {
 /// Skins available in the skins folder (and next to the executable).
 pub fn list_skins() -> Vec<PathBuf> {
     let mut dirs = vec![config::skins_dir()];
+    // Skins of an existing classic player installation (Windows or Wine).
+    for pf in ["ProgramFiles", "ProgramFiles(x86)"] {
+        if let Some(p) = std::env::var_os(pf) {
+            dirs.push(PathBuf::from(p).join("Winamp").join("Skins"));
+        }
+    }
+    if let Some(h) = dirs::home_dir() {
+        for pf in ["Program Files", "Program Files (x86)"] {
+            dirs.push(h.join(".wine/drive_c").join(pf).join("Winamp/Skins"));
+        }
+    }
     if let Ok(exe) = std::env::current_exe()
         && let Some(d) = exe.parent()
     {

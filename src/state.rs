@@ -251,6 +251,12 @@ impl State {
         })
     }
 
+    /// "N. Title" for the window title.
+    pub fn media_text_short(&self) -> Option<String> {
+        let idx = self.playlist.current?;
+        Some(format!("{}. {}", idx + 1, self.current_title()?))
+    }
+
     pub fn marquee_text(&self) -> String {
         if let Some((m, until)) = &self.message
             && Instant::now() < *until
