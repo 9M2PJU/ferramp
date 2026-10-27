@@ -1402,10 +1402,15 @@ impl App {
         if self.tip.is_some() || since.elapsed() < Duration::from_millis(600) {
             return;
         }
-        let _ = k;
         let Some((cx, cy)) = crate::platform::global_cursor() else {
             return;
         };
+        // The pointer may have left without a leave event (window moved away).
+        let (wx, wy, ww, wh) = self.rect_of(k);
+        if cx < wx || cy < wy || cx >= wx + ww || cy >= wy + wh {
+            self.hover_tip = None;
+            return;
+        }
         let fonts = &self.st.fonts;
         let tw = fonts.measure(&text, menu::FONT_PX, crate::text::Weight::Regular);
         let (w, h) = (tw + 6, 16);
