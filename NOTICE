@@ -1,0 +1,20 @@
+Ferramp
+Copyright (c) 2026 The Ferramp contributors
+Licensed under the MIT licence or the Apache License 2.0, at your option.
+
+All program code and the built-in skin artwork were written for Ferramp.
+Ferramp contains no code or artwork from Winamp. "Winamp" is a trademark of
+its owner; Ferramp is not affiliated with or endorsed by it.
+
+Third-party material:
+
+* Sprite coordinates of the classic skin format, the visualiser constants and
+  the equalizer preset values follow the Webamp project
+  (https://github.com/captbaritone/webamp), MIT licence,
+  Copyright (c) 2015 Jordan Eldredge.
+
+* assets/fonts/LiberationSans-*.ttf: Liberation Sans 2.1.5,
+  SIL Open Font License 1.1 (assets/fonts/LICENSE-OFL.txt).
+
+Rust dependencies are listed in Cargo.toml with their own licences
+(MIT, Apache-2.0, MPL-2.0 for the Symphonia decoders, and similar).
