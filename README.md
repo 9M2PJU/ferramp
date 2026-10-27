@@ -7,8 +7,8 @@ runs on Linux, Windows and macOS. Every line of code and every pixel of
 the built-in skin was written from scratch, and it is free software
 (MIT or Apache-2.0).
 
-Load any classic `.wsz` skin, including the original base skin if you
-have it, and the windows look exactly as they did in the original.
+Load any classic Winamp 2 `.wsz` skin, including the original base skin
+if you have it, and the windows look exactly as they did in the original.
 
 ## What it does
 
@@ -30,6 +30,14 @@ have it, and the windows look exactly as they did in the original.
 - Classic skins: `.wsz`/`.zip` or folders, `viscolor.txt`,
   `pledit.txt`, `region.txt` (shaped windows) and skin cursors.
 - The classic menus, keyboard shortcuts and tooltips.
+
+## Download
+
+Ready-made builds for Windows, macOS (universal) and Linux (x86_64 and
+ARM64) are on the [releases page](https://github.com/SpankulatorX/ferramp/releases/latest).
+None of them is code-signed: on Windows SmartScreen may ask you to
+confirm, and on macOS you right-click the app and choose Open the first
+time. On Linux, `./install.sh` from the archive adds a menu entry.
 
 ## Building
 
@@ -93,3 +101,8 @@ configuration folder (`FERRAMP_CONFIG_DIR` overrides it).
 ## Licence
 
 MIT or Apache-2.0, at your option. See `NOTICE` for third-party credits.
+
+Ferramp is an independent project. It is not affiliated with or endorsed
+by Winamp or its owners, and it contains none of their code or artwork.
+"Winamp" is a trademark of its respective owner and is named here only
+to say which skins Ferramp can load.

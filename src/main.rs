@@ -1,4 +1,5 @@
 //! Ferramp: a from-scratch, cross-platform reimplementation of the classic
+#![cfg_attr(windows, windows_subsystem = "windows")]
 #![allow(
     clippy::too_many_arguments,
     clippy::type_complexity,
