@@ -1121,9 +1121,13 @@ fn pledit_bmp() -> Bitmap {
             (rgb(64, 66, 82), rgb(40, 41, 52))
         };
         let edge = if active { rgb(120, 126, 190) } else { BODY_HI };
-        vgradient(&mut b, 72, y, 25, 14, top, bottom);
-        b.hline(72, y, 25, edge);
-        b.vline(72, y, 14, edge);
+        // The left piece (y=42) and the repeated tile (y=57) are shared by
+        // both states; only the right piece differs. The tile has no edges.
+        vgradient(&mut b, 72, y, 25, 14, rgb(64, 66, 82), rgb(40, 41, 52));
+        b.hline(72, y, 25, BODY_HI);
+        if y == 42 {
+            b.vline(72, y, 14, BODY_HI);
+        }
         b.hline(72, y + 13, 25, BODY_DARK);
         vgradient(&mut b, 99, y, 50, 14, top, bottom);
         b.hline(99, y, 50, edge);

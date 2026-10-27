@@ -1070,7 +1070,7 @@ impl App {
                     Some('n') => Some(Cmd::PlNew),
                     Some('s') => Some(Cmd::PlSave),
                     Some('o') => Some(Cmd::PlLoad),
-                    Some('e') => Some(Cmd::PlReadInfo),
+                    Some('e') => Some(Cmd::PlEditEntry),
                     Some('r') if m.shift => Some(Cmd::PlRandomize),
                     _ => None,
                 };
@@ -1092,7 +1092,11 @@ impl App {
             (K::Named(NamedKey::Insert), _) if focused == WinKind::Playlist => {
                 Some(Cmd::PlAddFiles)
             }
+            (_, Some('i')) if m.ctrl && m.alt => Some(Cmd::EditBookmarks),
+            (_, Some('k')) if m.ctrl && m.shift => Some(Cmd::ToggleVisPlugin),
             (_, Some(c)) if m.alt => match c {
+                'i' => Some(Cmd::AddBookmark),
+                'o' | 'k' => Some(Cmd::VisOptionsDialog),
                 'w' => Some(Cmd::ToggleWindow(WinKind::Main)),
                 'e' => Some(Cmd::ToggleWindow(WinKind::Playlist)),
                 'g' => Some(Cmd::ToggleWindow(WinKind::Eq)),
@@ -1112,6 +1116,7 @@ impl App {
                 'z' => Some(Cmd::StartOfList),
                 'r' => Some(Cmd::PlReverse),
                 'w' => Some(Cmd::ToggleShade(focused)),
+                'k' => Some(Cmd::VisOptionsDialog),
                 _ => None,
             },
             (_, Some(c)) => match c {
