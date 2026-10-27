@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Ferramp
+GenericName=Audio Player
+Comment=Classic skinnable audio player
+Exec=ferramp %U
+Icon=ferramp
+Terminal=false
+Categories=AudioVideo;Audio;Player;
+MimeType=audio/mpeg;audio/x-mpegurl;audio/x-scpls;audio/flac;audio/ogg;audio/x-wav;audio/mp4;audio/aac;audio/x-aiff;
+StartupWMClass=Ferramp
