@@ -22,7 +22,8 @@ allow it under System Settings, Privacy & Security. From a terminal,
 
 **Linux:** unpack and run `./ferramp`, or run `./install.sh` to install
 it with a menu entry into `~/.local`. It needs ALSA (or PipeWire/Pulse
-with the ALSA plug-in) and an X11 or XWayland display.
+with the ALSA plug-in), an X11 or XWayland display and glibc 2.35 or
+newer (Ubuntu 22.04, Debian 12, Fedora 36 or later).
 
 `SHA256SUMS.txt` lists the checksum of every file.
 
