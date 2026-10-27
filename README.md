@@ -18,15 +18,15 @@ have it, and the windows look exactly as they did in the original.
   bar (options, always on top, file info, double size, visualisation).
 - Window-shade mode for all three windows, double size, EasyMove,
   always on top.
-- 10-band equalizer with preamp, the spline graph, presets
+- 10-band equalizer with preamp, the response graph, presets
   (built-in library, auto-load presets per file, EQF import and export).
 - Playlist editor: resizable in steps, the ADD, REM, SEL, MISC and LIST
   button menus, multiple selection, drag to reorder, sorting, M3U, M3U8
   and PLS, jump to file, bookmarks, HTML export.
 - Windows dock to each other and snap to screen edges; moving the main
   window moves the docked group.
-- MP3, Ogg Vorbis, FLAC, WAV, AIFF, AAC/M4A, ALAC and more (Symphonia),
-  internet radio over HTTP(S) with stream titles.
+- MP3, MP2, Ogg Vorbis, FLAC, WAV, AIFF, AAC/M4A, ALAC, CAF and Matroska
+  audio (Symphonia), internet radio over HTTP(S) with stream titles.
 - Classic skins: `.wsz`/`.zip` or folders, `viscolor.txt`,
   `pledit.txt`, `region.txt` (shaped windows) and skin cursors.
 - The classic menus, keyboard shortcuts and tooltips.
@@ -50,8 +50,10 @@ TLS feature: `cargo check --no-default-features --target x86_64-pc-windows-gnu`.
 
 Put `.wsz` files in the skins folder (`~/.config/ferramp/Skins` on Linux,
 `%APPDATA%\ferramp\Skins` on Windows, `~/Library/Application Support/ferramp/Skins`
-on macOS) or use *Skins > Skin Browser* (Alt+S). Missing bitmaps fall back
-to the built-in skin, the way classic skins always worked.
+on macOS) or use *Skins > Skin Browser* (Alt+S). The browser also lists
+the Skins folder of an existing classic player installation (Windows or
+Wine). Missing bitmaps fall back to the built-in skin, the way classic
+skins always worked.
 
 ## Keyboard
 
@@ -76,6 +78,17 @@ to the built-in skin, the way classic skins always worked.
 files without opening a window. `FERRAMP_SCALE=2` doubles everything on
 very high-resolution screens. Settings are kept in `ferramp.ini` in the
 configuration folder (`FERRAMP_CONFIG_DIR` overrides it).
+
+## Limitations
+
+- Opus, WavPack, tracker modules and MIDI cannot be played (Symphonia has
+  no decoder for them).
+- The equalizer graph follows the original curve closely but not to the
+  last pixel.
+- Native Wayland mode cannot dock or snap windows, since Wayland does not
+  let applications position their own windows.
+- The media library, minibrowser, video window and input/output plug-ins
+  are not part of this recreation.
 
 ## Licence
 
