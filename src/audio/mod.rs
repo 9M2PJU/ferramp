@@ -830,10 +830,16 @@ mod tests {
     #[test]
     #[ignore]
     fn formats() {
-        let Some(dir) = std::env::var_os("FERRAMP_TEST_MEDIA") else { return };
+        let Some(dir) = std::env::var_os("FERRAMP_TEST_MEDIA") else {
+            return;
+        };
         // SAFETY: set before any other thread reads the environment in this test.
         unsafe { std::env::set_var("FERRAMP_NULL_AUDIO", "1") };
-        let mut files: Vec<_> = std::fs::read_dir(dir).unwrap().flatten().map(|e| e.path()).collect();
+        let mut files: Vec<_> = std::fs::read_dir(dir)
+            .unwrap()
+            .flatten()
+            .map(|e| e.path())
+            .collect();
         files.sort();
         let mut engine = Engine::new();
         for f in files {
@@ -842,15 +848,25 @@ mod tests {
             let mut opened = None;
             while start.elapsed() < Duration::from_secs(5) && opened.is_none() {
                 match engine.events.recv_timeout(Duration::from_millis(100)) {
-                    Ok(Event::Opened { duration, khz, channels, .. }) => opened = Some((duration, khz, channels)),
+                    Ok(Event::Opened {
+                        duration,
+                        khz,
+                        channels,
+                        ..
+                    }) => opened = Some((duration, khz, channels)),
                     Ok(Event::Error(e)) => panic!("{}: {e}", f.display()),
                     _ => {}
                 }
             }
-            let (duration, khz, channels) = opened.unwrap_or_else(|| panic!("{}: not opened", f.display()));
+            let (duration, khz, channels) =
+                opened.unwrap_or_else(|| panic!("{}: not opened", f.display()));
             std::thread::sleep(Duration::from_millis(600));
             let pos = engine.position();
-            println!("{}: {:?}s {khz}kHz {channels}ch, played {pos:.2}s", f.display(), duration);
+            println!(
+                "{}: {:?}s {khz}kHz {channels}ch, played {pos:.2}s",
+                f.display(),
+                duration
+            );
             assert!(pos > 0.2, "{}: position did not advance", f.display());
             engine.stop();
         }
@@ -866,7 +882,9 @@ mod engine_tests {
     #[test]
     #[ignore]
     fn seek_and_end() {
-        let Some(file) = std::env::var_os("FERRAMP_TEST_FILE") else { return };
+        let Some(file) = std::env::var_os("FERRAMP_TEST_FILE") else {
+            return;
+        };
         // SAFETY: set before any other thread reads the environment in this test.
         unsafe { std::env::set_var("FERRAMP_NULL_AUDIO", "1") };
         let mut engine = Engine::new();
@@ -890,6 +908,10 @@ mod engine_tests {
         engine.seek(1.0);
         std::thread::sleep(Duration::from_millis(400));
         assert!(!engine.finished());
-        assert!(engine.position() > 1.0 && engine.position() < 2.0, "{}", engine.position());
+        assert!(
+            engine.position() > 1.0 && engine.position() < 2.0,
+            "{}",
+            engine.position()
+        );
     }
 }

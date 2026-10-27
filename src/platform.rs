@@ -21,6 +21,11 @@ pub fn make_auxiliary(window: &Window, owner: &Window) {
     imp::make_auxiliary(window, owner)
 }
 
+/// Make a pop-up (menu, tooltip) that never takes focus from the player.
+pub fn make_popup(window: &Window) {
+    imp::make_popup(window)
+}
+
 /// Horizontal runs of visible pixels, scaled: (x, y, w, h).
 pub fn mask_runs(mask: &[bool], w: i32, h: i32, scale: i32) -> Vec<(i32, i32, i32, i32)> {
     let mut out = Vec::new();
@@ -125,6 +130,10 @@ mod imp {
         });
     }
 
+    pub fn make_popup(_window: &Window) {
+        // Override-redirect windows never receive focus.
+    }
+
     pub fn make_auxiliary(window: &Window, owner: &Window) {
         let (Some(id), Some(owner_id)) = (xid(window), xid(owner)) else {
             return;
@@ -212,6 +221,22 @@ mod imp {
     pub fn make_auxiliary(_window: &Window, _owner: &Window) {
         // Done at creation time with the owner-window attribute.
     }
+
+    pub fn make_popup(window: &Window) {
+        use windows_sys::Win32::UI::WindowsAndMessaging::{
+            GWL_EXSTYLE, GetWindowLongPtrW, SetWindowLongPtrW, WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW,
+        };
+        let Some(h) = hwnd(window) else { return };
+        // SAFETY: style change on a window owned by this process.
+        unsafe {
+            let ex = GetWindowLongPtrW(h as _, GWL_EXSTYLE);
+            SetWindowLongPtrW(
+                h as _,
+                GWL_EXSTYLE,
+                ex | (WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW) as isize,
+            );
+        }
+    }
 }
 
 #[cfg(target_os = "macos")]
@@ -236,6 +261,8 @@ mod imp {
     pub fn set_shape(_window: &Window, _mask: Option<(&[bool], i32, i32, i32)>) {}
 
     pub fn make_auxiliary(_window: &Window, _owner: &Window) {}
+
+    pub fn make_popup(_window: &Window) {}
 }
 
 #[cfg(test)]

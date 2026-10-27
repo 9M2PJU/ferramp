@@ -48,12 +48,16 @@ impl Fonts {
         let load = |names: &[&str], fallback: &'static [u8]| -> swash::FontRef<'static> {
             if std::env::var_os("FERRAMP_BUNDLED_FONTS").is_none() {
                 for dir in system_font_dirs() {
-                    let Ok(rd) = std::fs::read_dir(&dir) else { continue };
+                    let Ok(rd) = std::fs::read_dir(&dir) else {
+                        continue;
+                    };
                     // Font file names differ in case between systems (Arial.TTF, arial.ttf).
                     let files: Vec<std::path::PathBuf> = rd.flatten().map(|e| e.path()).collect();
                     for n in names {
                         let Some(p) = files.iter().find(|f| {
-                            f.file_name().map(|x| x.to_string_lossy().eq_ignore_ascii_case(n)).unwrap_or(false)
+                            f.file_name()
+                                .map(|x| x.to_string_lossy().eq_ignore_ascii_case(n))
+                                .unwrap_or(false)
                         }) else {
                             continue;
                         };
@@ -208,13 +212,20 @@ impl Fonts {
 fn system_font_dirs() -> Vec<std::path::PathBuf> {
     let mut v = Vec::new();
     if cfg!(windows) {
-        let windir = std::env::var_os("WINDIR").map(std::path::PathBuf::from).unwrap_or_else(|| "C:\\Windows".into());
+        let windir = std::env::var_os("WINDIR")
+            .map(std::path::PathBuf::from)
+            .unwrap_or_else(|| "C:\\Windows".into());
         v.push(windir.join("Fonts"));
     } else if cfg!(target_os = "macos") {
         v.push("/System/Library/Fonts/Supplemental".into());
         v.push("/Library/Fonts".into());
     } else {
-        for d in ["/usr/share/fonts/TTF", "/usr/share/fonts/truetype/msttcorefonts", "/usr/share/fonts/msttcore", "/usr/share/fonts/truetype/msttcorefonts/"] {
+        for d in [
+            "/usr/share/fonts/TTF",
+            "/usr/share/fonts/truetype/msttcorefonts",
+            "/usr/share/fonts/msttcore",
+            "/usr/share/fonts/truetype/msttcorefonts/",
+        ] {
             v.push(d.into());
         }
         if let Some(h) = dirs::home_dir() {

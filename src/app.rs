@@ -163,6 +163,7 @@ pub struct App {
     hover_tip: Option<(WinKind, String, Instant)>,
     next_frame: Instant,
     window_title: String,
+    focus_check: bool,
 }
 
 impl App {
@@ -217,6 +218,7 @@ impl App {
             hover_tip: None,
             next_frame: Instant::now(),
             window_title: String::new(),
+            focus_check: false,
         };
         app.apply_settings();
         app.load_libraries();
@@ -1233,6 +1235,7 @@ impl App {
             return;
         };
         debug!("menu at {x},{y} size {w}x{h}");
+        crate::platform::make_popup(&os.window);
         os.window.request_redraw();
         self.menus.push(MenuPopup { level, os, x, y });
     }
@@ -1439,6 +1442,7 @@ impl App {
             return;
         };
         let Some(os) = OsWin::new(window) else { return };
+        crate::platform::make_popup(&os.window);
         os.window.request_redraw();
         self.tip = Some(Tooltip { os, w, h, text });
     }
@@ -2360,6 +2364,17 @@ impl App {
             self.st.dirty = true;
         }
         self.check_menu_outside_click();
+        if std::mem::take(&mut self.focus_check)
+            && !self.menus.is_empty()
+            && self.menu_opened_at.elapsed() > Duration::from_millis(300)
+        {
+            let ours = self.wins.values().any(|w| w.window.has_focus())
+                || self.menus.iter().any(|m| m.os.window.has_focus())
+                || self.dialogs.iter().any(|d| d.os.window.has_focus());
+            if !ours {
+                self.close_menus();
+            }
+        }
         self.update_tooltip(el);
         if self.drag.is_some() {
             if mouse_button_down() || crate::platform::global_cursor().is_none() {
@@ -2624,15 +2639,9 @@ impl ApplicationHandler<UserEvent> for App {
                     self.st.focused = Some(k);
                 } else if self.st.focused == Some(k) {
                     self.st.focused = None;
-                    if !self.menus.is_empty()
-                        && self.menu_opened_at.elapsed() > Duration::from_millis(300)
-                    {
-                        // Another application took focus.
-                        let ours = self.wins.values().any(|w| w.window.has_focus());
-                        if !ours {
-                            self.close_menus();
-                        }
-                    }
+                    // Whether another application took focus is decided on the
+                    // next frame (a click on a menu may move focus to it first).
+                    self.focus_check = true;
                 }
                 self.st.dirty = true;
             }
