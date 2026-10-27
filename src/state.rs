@@ -31,6 +31,8 @@ pub struct NowPlaying {
     pub channels: u32,
     pub stream_name: Option<String>,
     pub stream_title: Option<String>,
+    /// Playlist title of the playing track, kept if its entry is removed.
+    pub title: Option<String>,
 }
 
 /// Something the user is adjusting; its text replaces the song title.
@@ -231,10 +233,15 @@ impl State {
 
     pub fn current_title(&self) -> Option<String> {
         let e = self.playlist.current_entry()?;
-        if let Some(t) = &self.now.stream_title
-            && self.status() != Status::Stopped
-        {
-            return Some(t.clone());
+        if self.status() != Status::Stopped {
+            if let Some(t) = &self.now.stream_title {
+                return Some(t.clone());
+            }
+            if self.playlist.orphaned
+                && let Some(t) = &self.now.title
+            {
+                return Some(t.clone());
+            }
         }
         Some(e.title.clone())
     }

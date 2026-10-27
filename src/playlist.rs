@@ -57,6 +57,9 @@ pub struct Playlist {
     pub entries: Vec<Entry>,
     /// Index of the entry being played (or that will play on "Play").
     pub current: Option<usize>,
+    /// The playing entry was removed: `current` is only a cursor now, and
+    /// the next track is the one at the cursor, not the one after it.
+    pub orphaned: bool,
     /// First visible row in the editor.
     pub scroll: usize,
     anchor: Option<usize>,
@@ -166,6 +169,7 @@ impl Playlist {
     pub fn clear(&mut self) {
         self.entries.clear();
         self.current = None;
+        self.orphaned = true;
         self.scroll = 0;
         self.anchor = None;
         self.invalidate_shuffle();
@@ -177,8 +181,14 @@ impl Playlist {
         self.entries.retain(|e| keep(e));
         self.current = match current_id.and_then(|id| self.index_of(id)) {
             Some(i) => Some(i),
-            None if self.entries.is_empty() => None,
-            None => Some(before.unwrap_or(0).min(self.entries.len() - 1)),
+            None if self.entries.is_empty() => {
+                self.orphaned = true;
+                None
+            }
+            None => {
+                self.orphaned = true;
+                Some(before.unwrap_or(0).min(self.entries.len() - 1))
+            }
         };
         self.anchor = None;
         let max_scroll = self.entries.len().saturating_sub(1);
@@ -374,12 +384,22 @@ impl Playlist {
         self.shuffle_pos = 0;
     }
 
+    /// Make entry `i` the playing one.
+    pub fn set_current(&mut self, i: usize) {
+        self.current = Some(i);
+        self.orphaned = false;
+    }
+
     /// Index after the current one, honouring shuffle and repeat.
     /// `None` means the end of the list was reached without repeat.
     pub fn next_index(&mut self, shuffle: bool, repeat: bool) -> Option<usize> {
         let n = self.entries.len();
         if n == 0 {
             return None;
+        }
+        if self.orphaned {
+            self.orphaned = false;
+            return Some(self.current.unwrap_or(0).min(n - 1));
         }
         if shuffle {
             self.ensure_shuffle();
@@ -398,7 +418,12 @@ impl Playlist {
             }
             self.invalidate_shuffle();
             self.ensure_shuffle();
-            return self.shuffle_order.first().copied();
+            // The new order starts with the track that just played; go on
+            // to the one after it.
+            if n > 1 {
+                self.shuffle_pos = 1;
+            }
+            return self.shuffle_order.get(self.shuffle_pos).copied();
         }
         match self.current {
             None => Some(0),
@@ -695,5 +720,52 @@ mod tests {
         assert_eq!(format_time(0.0), "0:00");
         assert_eq!(format_time(61.9), "1:01");
         assert_eq!(format_time(3725.0), "62:05");
+    }
+
+    fn list(n: usize) -> Playlist {
+        let mut p = Playlist::new();
+        p.append(
+            (0..n)
+                .map(|i| (Source::File(format!("/m/{i}.mp3").into()), None, None))
+                .collect(),
+        );
+        p
+    }
+
+    #[test]
+    fn removing_the_playing_entry_plays_the_following_one() {
+        let mut p = list(4);
+        p.set_current(1);
+        p.entries[1].selected = true;
+        p.remove_selected();
+        // Entry "2" moved into slot 1 and must not be skipped.
+        assert_eq!(p.next_index(false, false), Some(1));
+    }
+
+    #[test]
+    fn loading_a_new_list_during_playback_starts_at_its_first_entry() {
+        let mut p = list(3);
+        p.set_current(2);
+        p.clear();
+        p.append(vec![
+            (Source::File("/n/a.mp3".into()), None, None),
+            (Source::File("/n/b.mp3".into()), None, None),
+        ]);
+        assert_eq!(p.next_index(false, false), Some(0));
+    }
+
+    #[test]
+    fn shuffle_repeat_never_replays_the_same_track_at_once() {
+        for _ in 0..50 {
+            let mut p = list(5);
+            p.set_current(0);
+            let mut last = 0;
+            for _ in 0..30 {
+                let n = p.next_index(true, true).unwrap();
+                assert_ne!(n, last);
+                p.set_current(n);
+                last = n;
+            }
+        }
     }
 }

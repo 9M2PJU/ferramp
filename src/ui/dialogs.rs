@@ -670,6 +670,25 @@ impl Dialog {
         })
     }
 
+    /// Jump-to-file: the playlist changed while the dialog is open. Keeps the
+    /// filter and, when possible, the selected title and scroll position.
+    pub fn set_entries(&mut self, titles: Vec<String>) {
+        let keep = self
+            .selected_value()
+            .and_then(|i| self.entries.get(i).cloned());
+        let old_scroll = self.list().map(|l| *l.3).unwrap_or(0);
+        self.entries = titles;
+        self.refilter();
+        let values = self.list().map(|l| l.1.clone()).unwrap_or_default();
+        let pos = keep.and_then(|t| values.iter().position(|&v| self.entries.get(v) == Some(&t)));
+        if let Some((items, _, sel, scroll, _)) = self.list() {
+            if pos.is_some() {
+                *sel = pos;
+            }
+            *scroll = old_scroll.min(items.len().saturating_sub(1));
+        }
+    }
+
     /// Jump-to-file: filter entries by the search words.
     fn refilter(&mut self) {
         let query = self.input_text().to_lowercase();

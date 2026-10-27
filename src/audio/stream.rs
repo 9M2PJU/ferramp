@@ -75,6 +75,7 @@ pub struct OpenedStream {
 pub fn open(url: &str, titles: Sender<String>) -> Result<OpenedStream, String> {
     let agent: ureq::Agent = ureq::Agent::config_builder()
         .timeout_connect(Some(std::time::Duration::from_secs(10)))
+        .timeout_recv_response(Some(std::time::Duration::from_secs(15)))
         .build()
         .into();
     let resp = agent

@@ -999,7 +999,10 @@ mod tests {
         let st = State::new(Engine::headless(), Skin::builtin());
         let w = MainWin::new();
         assert_eq!(w.tooltip(&st, 13, 36), "Toggle Always-On-Top");
-        assert_eq!(w.tooltip(&st, 180, 27), "Song Title (right-click for options)");
+        assert_eq!(
+            w.tooltip(&st, 180, 27),
+            "Song Title (right-click for options)"
+        );
         assert!(w.tooltip(&st, 50, 97).starts_with("Ferramp"));
     }
 

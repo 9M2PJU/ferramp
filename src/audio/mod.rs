@@ -106,6 +106,9 @@ pub struct Shared {
     eq: Mutex<EqSettings>,
     eq_version: AtomicU64,
     out_rate: AtomicU32,
+    /// Generation of the decoder allowed to push audio; older decoders that
+    /// are still winding down stop at their next push.
+    active: AtomicU64,
 }
 
 #[derive(Clone, Copy, Debug, Default)]
@@ -133,6 +136,7 @@ impl Shared {
             eq: Mutex::new(EqSettings::default()),
             eq_version: AtomicU64::new(0),
             out_rate: AtomicU32::new(44100),
+            active: AtomicU64::new(0),
         }
     }
 }
@@ -149,8 +153,8 @@ struct Decoding {
 
 pub struct Engine {
     pub shared: Arc<Shared>,
-    events_tx: Sender<Event>,
-    pub events: Receiver<Event>,
+    events_tx: Sender<(u64, Event)>,
+    events: Receiver<(u64, Event)>,
     producer: Arc<Mutex<Option<rtrb::Producer<[f32; 2]>>>>,
     pushed: Arc<AtomicU64>,
     current: Option<Decoding>,
@@ -284,14 +288,33 @@ impl Engine {
         self.shared.eq_version.fetch_add(1, Ordering::Relaxed);
     }
 
-    pub fn play(&mut self, source: Source) {
-        self.stop_decoder();
+    /// Next event from the current track; events of earlier tracks are dropped.
+    pub fn next_event(&self) -> Option<Event> {
+        loop {
+            let (generation, ev) = self.events.try_recv().ok()?;
+            if generation == self.generation {
+                return Some(ev);
+            }
+        }
+    }
+
+    /// Start a new generation: older decoders may no longer push audio, and
+    /// whatever they queued is skipped. Returns the first frame of the new one.
+    fn new_generation(&mut self) -> u64 {
+        // Holding the producer lock orders this against any push in progress.
+        let _guard = self.producer.lock().unwrap();
         self.generation += 1;
+        self.shared.active.store(self.generation, Ordering::SeqCst);
         let start_frame = self.pushed.load(Ordering::SeqCst);
-        // Drop whatever is still queued from the previous track.
         self.shared
             .discard_until
             .store(start_frame, Ordering::SeqCst);
+        start_frame
+    }
+
+    pub fn play(&mut self, source: Source) {
+        self.stop_decoder();
+        let start_frame = self.new_generation();
         *self.shared.timeline.lock().unwrap() = Timeline {
             base_frame: start_frame,
             base_time: 0.0,
@@ -342,8 +365,7 @@ impl Engine {
 
     pub fn stop(&mut self) {
         self.stop_decoder();
-        let end = self.pushed.load(Ordering::SeqCst);
-        self.shared.discard_until.store(end, Ordering::SeqCst);
+        self.new_generation();
         self.shared.paused.store(false, Ordering::SeqCst);
         self.status = Status::Stopped;
         self.shared.kbps.store(0, Ordering::Relaxed);
@@ -351,12 +373,12 @@ impl Engine {
         vis.iter_mut().for_each(|s| *s = 0.0);
     }
 
+    /// Tell the decoder to stop without waiting for it: it may be blocked on
+    /// a stalled network stream. It can no longer push audio once a new
+    /// generation starts, and its events are ignored.
     fn stop_decoder(&mut self) {
-        if let Some(mut d) = self.current.take() {
+        if let Some(d) = self.current.take() {
             let _ = d.cmd.send(Cmd::Stop);
-            if let Some(t) = d.thread.take() {
-                let _ = t.join();
-            }
         }
     }
 
@@ -364,10 +386,12 @@ impl Engine {
         if self.status == Status::Stopped {
             return;
         }
-        // After the decoder has reached the end it no longer reads commands;
-        // reopen the track to seek backwards.
-        let ended = self.shared.timeline.lock().unwrap().end_frame.is_some();
-        if ended && let Some(src) = self.source.clone() {
+        // A decoder that has exited (after an error) cannot seek; reopen the track.
+        let exited = self
+            .current
+            .as_ref()
+            .is_none_or(|d| d.thread.as_ref().is_none_or(|t| t.is_finished()));
+        if exited && let Some(src) = self.source.clone() {
             let paused = self.status == Status::Paused;
             self.play(src);
             if paused {
@@ -410,7 +434,15 @@ impl Engine {
 
     pub fn mark_stopped(&mut self) {
         self.stop_decoder();
+        self.new_generation();
         self.status = Status::Stopped;
+    }
+
+    /// True once audio of the current track has actually reached the output.
+    pub fn has_played(&self) -> bool {
+        let tl = *self.shared.timeline.lock().unwrap();
+        tl.generation == self.generation
+            && self.shared.consumed.load(Ordering::Relaxed) > tl.base_frame
     }
 
     /// Latest mono samples for the visualiser, oldest first.
@@ -552,14 +584,22 @@ struct DecodeCtx {
     shared: Arc<Shared>,
     producer: Arc<Mutex<Option<rtrb::Producer<[f32; 2]>>>>,
     pushed: Arc<AtomicU64>,
-    events: Sender<Event>,
+    events: Sender<(u64, Event)>,
     cmds: Receiver<Cmd>,
     generation: u64,
 }
 
+impl DecodeCtx {
+    fn send(&self, ev: Event) {
+        let _ = self.events.send((self.generation, ev));
+    }
+}
+
 fn decode_thread(ctx: DecodeCtx) {
-    if let Err(e) = decode(&ctx) {
-        let _ = ctx.events.send(Event::Error(e));
+    match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| decode(&ctx))) {
+        Ok(Ok(())) => {}
+        Ok(Err(e)) => ctx.send(Event::Error(e)),
+        Err(_) => ctx.send(Event::Error("decoder error".into())),
     }
 }
 
@@ -637,7 +677,7 @@ fn decode(ctx: &DecodeCtx) -> Result<(), String> {
     };
     let initial_kbps = stream_kbps.or(file_kbps).unwrap_or(0);
     ctx.shared.kbps.store(initial_kbps, Ordering::Relaxed);
-    let _ = ctx.events.send(Event::Opened {
+    ctx.send(Event::Opened {
         duration,
         kbps: initial_kbps,
         khz: (in_rate as f64 / 1000.0).round() as u32,
@@ -656,121 +696,130 @@ fn decode(ctx: &DecodeCtx) -> Result<(), String> {
     let tb = track.time_base;
     let is_vbr_capable = matches!(ctx.source, Source::File(_));
 
-    loop {
-        // Commands (a seek that arrived while the ring was full comes first).
-        let cmd = match PENDING_SEEK.with(|p| p.take()) {
-            Some(s) => Ok(Cmd::Seek(s)),
-            None => ctx.cmds.try_recv(),
-        };
-        match cmd {
-            Ok(Cmd::Stop) | Err(mpsc::TryRecvError::Disconnected) => return Ok(()),
-            Ok(Cmd::Seek(secs)) => {
-                let to = SeekTo::Time {
-                    time: Time::try_from_secs_f64(secs).unwrap_or(Time::ZERO),
-                    track_id: Some(track.id),
-                };
-                if let Ok(seeked) = format.seek(SeekMode::Accurate, to) {
-                    decoder.reset();
-                    resampler.reset();
-                    let actual = tb
-                        .and_then(|tb| tb.calc_time(seeked.actual_ts))
-                        .map(|t| t.as_secs_f64())
-                        .unwrap_or(secs);
-                    let now = ctx.pushed.load(Ordering::SeqCst);
-                    ctx.shared.discard_until.store(now, Ordering::SeqCst);
-                    let mut tl = ctx.shared.timeline.lock().unwrap();
-                    if tl.generation == ctx.generation {
-                        tl.base_frame = now;
-                        tl.base_time = actual;
-                        tl.end_frame = None;
+    'track: loop {
+        loop {
+            // Commands (a seek that arrived while the ring was full comes first).
+            let cmd = match PENDING_SEEK.with(|p| p.take()) {
+                Some(s) => Ok(Cmd::Seek(s)),
+                None => ctx.cmds.try_recv(),
+            };
+            match cmd {
+                Ok(Cmd::Stop) | Err(mpsc::TryRecvError::Disconnected) => return Ok(()),
+                Ok(Cmd::Seek(secs)) => {
+                    let to = SeekTo::Time {
+                        time: Time::try_from_secs_f64(secs).unwrap_or(Time::ZERO),
+                        track_id: Some(track.id),
+                    };
+                    if let Ok(seeked) = format.seek(SeekMode::Accurate, to) {
+                        decoder.reset();
+                        resampler.reset();
+                        let actual = tb
+                            .and_then(|tb| tb.calc_time(seeked.actual_ts))
+                            .map(|t| t.as_secs_f64())
+                            .unwrap_or(secs);
+                        let now = ctx.pushed.load(Ordering::SeqCst);
+                        ctx.shared.discard_until.store(now, Ordering::SeqCst);
+                        let mut tl = ctx.shared.timeline.lock().unwrap();
+                        if tl.generation == ctx.generation {
+                            tl.base_frame = now;
+                            tl.base_time = actual;
+                            tl.end_frame = None;
+                        }
                     }
                 }
+                Err(mpsc::TryRecvError::Empty) => {}
             }
-            Err(mpsc::TryRecvError::Empty) => {}
-        }
-        while let Ok(t) = title_rx.try_recv() {
-            let _ = ctx.events.send(Event::StreamTitle(t));
-        }
-        let v = ctx.shared.eq_version.load(Ordering::Relaxed);
-        if v != eq_version {
-            eq_version = v;
-            eq.set(*ctx.shared.eq.lock().unwrap());
-        }
+            while let Ok(t) = title_rx.try_recv() {
+                ctx.send(Event::StreamTitle(t));
+            }
+            let v = ctx.shared.eq_version.load(Ordering::Relaxed);
+            if v != eq_version {
+                eq_version = v;
+                eq.set(*ctx.shared.eq.lock().unwrap());
+            }
 
-        let packet = match format.next_packet() {
-            Ok(Some(p)) => p,
-            Ok(None) => break,
-            Err(SymError::ResetRequired) => break,
-            Err(SymError::IoError(e)) if e.kind() == std::io::ErrorKind::UnexpectedEof => break,
-            Err(e) => return Err(format!("read error: {e}")),
-        };
-        if packet.track_id != track.id {
-            continue;
-        }
-        let pkt_bytes = packet.data.len();
-        let pkt_secs = tb
-            .and_then(|tb| tb.calc_duration(packet.dur))
-            .map(|t| t.as_secs_f64())
-            .unwrap_or(0.0);
-        let buf = match decoder.decode(&packet) {
-            Ok(b) => b,
-            Err(SymError::DecodeError(_)) => continue,
-            Err(e) => return Err(format!("decode error: {e}")),
-        };
-        let ch = buf.spec().channels().count().max(1);
-        samples.clear();
-        buf.copy_to_vec_interleaved(&mut samples);
-        frames.clear();
-        for f in samples.chunks_exact(ch) {
-            frames.push(if ch == 1 { [f[0], f[0]] } else { [f[0], f[1]] });
-        }
-        // Moving bitrate display for variable-bitrate files.
-        if is_vbr_capable && pkt_secs > 0.0 {
-            bits_window.push_back((pkt_secs, pkt_bytes));
-            let mut total_t: f64 = bits_window.iter().map(|x| x.0).sum();
-            while total_t > 1.0 && bits_window.len() > 1 {
-                let (t, _) = bits_window.pop_front().unwrap();
-                total_t -= t;
+            let packet = match format.next_packet() {
+                Ok(Some(p)) => p,
+                Ok(None) => break,
+                Err(SymError::ResetRequired) => break,
+                Err(SymError::IoError(e)) if e.kind() == std::io::ErrorKind::UnexpectedEof => break,
+                Err(e) => return Err(format!("read error: {e}")),
+            };
+            if packet.track_id != track.id {
+                continue;
             }
-            let bytes: usize = bits_window.iter().map(|x| x.1).sum();
-            if total_t > 0.2 {
-                ctx.shared.kbps.store(
-                    ((bytes as f64 * 8.0) / total_t / 1000.0).round() as u32,
-                    Ordering::Relaxed,
-                );
+            let pkt_bytes = packet.data.len();
+            let pkt_secs = tb
+                .and_then(|tb| tb.calc_duration(packet.dur))
+                .map(|t| t.as_secs_f64())
+                .unwrap_or(0.0);
+            let buf = match decoder.decode(&packet) {
+                Ok(b) => b,
+                Err(SymError::DecodeError(_)) => continue,
+                Err(e) => return Err(format!("decode error: {e}")),
+            };
+            let ch = buf.spec().channels().count().max(1);
+            samples.clear();
+            buf.copy_to_vec_interleaved(&mut samples);
+            frames.clear();
+            for f in samples.chunks_exact(ch) {
+                frames.push(if ch == 1 { [f[0], f[0]] } else { [f[0], f[1]] });
+            }
+            // Moving bitrate display for variable-bitrate files.
+            if is_vbr_capable && pkt_secs > 0.0 {
+                bits_window.push_back((pkt_secs, pkt_bytes));
+                let mut total_t: f64 = bits_window.iter().map(|x| x.0).sum();
+                while total_t > 1.0 && bits_window.len() > 1 {
+                    let (t, _) = bits_window.pop_front().unwrap();
+                    total_t -= t;
+                }
+                let bytes: usize = bits_window.iter().map(|x| x.1).sum();
+                if total_t > 0.2 {
+                    ctx.shared.kbps.store(
+                        ((bytes as f64 * 8.0) / total_t / 1000.0).round() as u32,
+                        Ordering::Relaxed,
+                    );
+                }
+            }
+            out.clear();
+            resampler.process(&frames, &mut out);
+            eq.process(&mut out);
+            if !push_all(ctx, &out)? {
+                return Ok(());
             }
         }
+        // Flush the resampler tail with a little silence, then mark the end.
         out.clear();
-        resampler.process(&frames, &mut out);
+        resampler.process(&[[0.0; 2]; 32], &mut out);
         eq.process(&mut out);
         if !push_all(ctx, &out)? {
             return Ok(());
         }
-    }
-    // Flush the resampler tail with a little silence, then mark the end.
-    out.clear();
-    resampler.process(&[[0.0; 2]; 32], &mut out);
-    eq.process(&mut out);
-    if !push_all(ctx, &out)? {
-        return Ok(());
-    }
-    let end = ctx.pushed.load(Ordering::SeqCst);
-    {
-        let mut tl = ctx.shared.timeline.lock().unwrap();
-        if tl.generation == ctx.generation {
-            tl.end_frame = Some(end);
+        // A seek that arrived during the flush restarts decoding.
+        if PENDING_SEEK.with(|p| p.get()).is_some() {
+            continue 'track;
         }
-    }
-    // Wait (interruptibly) for the UI to stop us or start the next track; a
-    // seek after the end restarts decoding of this track.
-    loop {
-        match ctx.cmds.recv_timeout(Duration::from_millis(50)) {
-            Ok(Cmd::Stop) | Err(mpsc::RecvTimeoutError::Disconnected) => return Ok(()),
-            Ok(Cmd::Seek(_)) => {
-                // Seeking after the end: rewind by re-running decode from the start.
+        let end = ctx.pushed.load(Ordering::SeqCst);
+        {
+            let mut tl = ctx.shared.timeline.lock().unwrap();
+            if tl.generation == ctx.generation {
+                tl.end_frame = Some(end);
+            }
+        }
+        // Wait (interruptibly) for the UI to stop us or start the next track; a
+        // seek after the end resumes decoding of this track.
+        loop {
+            match ctx.cmds.recv_timeout(Duration::from_millis(50)) {
+                Ok(Cmd::Stop) | Err(mpsc::RecvTimeoutError::Disconnected) => return Ok(()),
+                Ok(Cmd::Seek(s)) => {
+                    PENDING_SEEK.with(|p| p.set(Some(s)));
+                    continue 'track;
+                }
+                Err(mpsc::RecvTimeoutError::Timeout) => {}
+            }
+            if ctx.shared.active.load(Ordering::SeqCst) != ctx.generation {
                 return Ok(());
             }
-            Err(mpsc::RecvTimeoutError::Timeout) => {}
         }
     }
 }
@@ -782,6 +831,9 @@ fn push_all(ctx: &DecodeCtx, frames: &[[f32; 2]]) -> Result<bool, String> {
     while i < frames.len() {
         {
             let mut guard = ctx.producer.lock().unwrap();
+            if ctx.shared.active.load(Ordering::SeqCst) != ctx.generation {
+                return Ok(false);
+            }
             let Some(prod) = guard.as_mut() else {
                 return Err("audio device unavailable".into());
             };
@@ -847,7 +899,11 @@ mod tests {
             let start = std::time::Instant::now();
             let mut opened = None;
             while start.elapsed() < Duration::from_secs(5) && opened.is_none() {
-                match engine.events.recv_timeout(Duration::from_millis(100)) {
+                match engine
+                    .events
+                    .recv_timeout(Duration::from_millis(100))
+                    .map(|e| e.1)
+                {
                     Ok(Event::Opened {
                         duration,
                         khz,
@@ -904,7 +960,7 @@ mod engine_tests {
             std::thread::sleep(Duration::from_millis(50));
         }
         assert!(engine.finished(), "did not reach the end");
-        // Seeking after the end reopens the track.
+        // Seeking after the end resumes the same decoder.
         engine.seek(1.0);
         std::thread::sleep(Duration::from_millis(400));
         assert!(!engine.finished());
@@ -912,6 +968,64 @@ mod engine_tests {
             engine.position() > 1.0 && engine.position() < 2.0,
             "{}",
             engine.position()
+        );
+    }
+
+    /// Switching tracks while the first is still opening must not deliver
+    /// the first track's events: `FERRAMP_TEST_FILE=a.mp3 FERRAMP_TEST_FILE2=b.wav`.
+    #[test]
+    #[ignore]
+    fn stale_events_are_dropped() {
+        let (Some(a), Some(b)) = (
+            std::env::var_os("FERRAMP_TEST_FILE"),
+            std::env::var_os("FERRAMP_TEST_FILE2"),
+        ) else {
+            return;
+        };
+        // SAFETY: set before any other thread reads the environment in this test.
+        unsafe { std::env::set_var("FERRAMP_NULL_AUDIO", "1") };
+        let mut engine = Engine::new();
+        engine.play(Source::File("/nonexistent/x.mp3".into()));
+        engine.play(Source::File(a.into()));
+        engine.stop();
+        engine.play(Source::File(b.clone().into()));
+        let want = crate::metadata::read(std::path::Path::new(&b)).and_then(|i| i.duration);
+        let start = std::time::Instant::now();
+        let mut got = None;
+        while got.is_none() && start.elapsed() < Duration::from_secs(5) {
+            match engine.next_event() {
+                Some(Event::Opened { duration, .. }) => got = Some(duration),
+                Some(Event::Error(e)) => panic!("stale error delivered: {e}"),
+                _ => std::thread::sleep(Duration::from_millis(20)),
+            }
+        }
+        let d = got.expect("not opened").unwrap_or(0.0);
+        assert!((d - want.unwrap_or(d)).abs() < 0.5, "{d} vs {want:?}");
+        std::thread::sleep(Duration::from_millis(500));
+        assert!(engine.position() > 0.2 && engine.position() < 1.0);
+    }
+
+    /// Stop must not wait for a decoder blocked on a stalled stream.
+    #[test]
+    fn stop_does_not_block_on_a_stalled_stream() {
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+        // Accept the connection and never answer.
+        std::thread::spawn(move || {
+            let _held: Vec<_> = listener.incoming().take(1).collect();
+            std::thread::sleep(Duration::from_secs(30));
+        });
+        let mut engine = Engine::headless();
+        engine.play(Source::Url(format!("http://127.0.0.1:{port}/stream")));
+        std::thread::sleep(Duration::from_millis(200));
+        let t = std::time::Instant::now();
+        engine.stop();
+        engine.play(Source::Url(format!("http://127.0.0.1:{port}/other")));
+        drop(engine);
+        assert!(
+            t.elapsed() < Duration::from_millis(100),
+            "{:?}",
+            t.elapsed()
         );
     }
 }

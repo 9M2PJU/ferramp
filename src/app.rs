@@ -164,6 +164,7 @@ pub struct App {
     next_frame: Instant,
     window_title: String,
     focus_check: bool,
+    menu_released: bool,
 }
 
 impl App {
@@ -219,6 +220,7 @@ impl App {
             next_frame: Instant::now(),
             window_title: String::new(),
             focus_check: false,
+            menu_released: true,
         };
         app.apply_settings();
         app.load_libraries();
@@ -568,7 +570,7 @@ impl App {
             self.request_info(&ids);
             let cur = self.settings.get_i32("current", 0).max(0) as usize;
             if cur < self.st.playlist.len() {
-                self.st.playlist.current = Some(cur);
+                self.st.playlist.set_current(cur);
             }
         }
         if !files.is_empty() {
@@ -1186,6 +1188,9 @@ impl App {
         let s = self.scale(owner);
         self.menu_owner = Some(owner);
         self.menu_opened_at = Instant::now();
+        // A press that opened the menu must be released before a press
+        // outside it can close the menu again.
+        self.menu_released = !mouse_button_down();
         self.push_menu(el, items, g.x + x * s, g.y + y * s);
     }
 
@@ -1350,6 +1355,10 @@ impl App {
             return;
         }
         if !mouse_button_down() {
+            self.menu_released = true;
+            return;
+        }
+        if !self.menu_released {
             return;
         }
         let Some((cx, cy)) = crate::platform::global_cursor() else {
@@ -1362,6 +1371,26 @@ impl App {
         if !inside {
             debug!("menu: outside click at {cx},{cy}");
             self.close_menus();
+        }
+    }
+
+    /// Keep an open Jump-to-file dialog in step with the playlist, so its
+    /// rows never point at entries that have moved.
+    fn sync_jump_dialog(&mut self) {
+        let entries = &self.st.playlist.entries;
+        for d in &mut self.dialogs {
+            if d.dialog.kind == DialogKind::JumpToFile
+                && !d
+                    .dialog
+                    .entries
+                    .iter()
+                    .map(String::as_str)
+                    .eq(entries.iter().map(|e| e.title.as_str()))
+            {
+                d.dialog
+                    .set_entries(entries.iter().map(|e| e.title.clone()).collect());
+                d.os.window.request_redraw();
+            }
         }
     }
 
@@ -1727,9 +1756,15 @@ impl App {
             return;
         };
         let src = e.source.clone();
-        self.st.playlist.current = Some(i);
+        let title = e.title.clone();
+        let duration = e.duration;
+        self.st.playlist.set_current(i);
         self.st.now = Default::default();
-        if let Some(d) = e.duration {
+        self.st.now.title = Some(title);
+        if self.st.fade.take().is_some() {
+            self.st.engine.set_volume(self.st.volume as f32 / 100.0);
+        }
+        if let Some(d) = duration {
             self.st.now.duration = Some(d);
         }
         self.st.error = None;
@@ -1768,7 +1803,7 @@ impl App {
     }
 
     fn poll_audio(&mut self) {
-        while let Ok(ev) = self.st.engine.events.try_recv() {
+        while let Some(ev) = self.st.engine.next_event() {
             match ev {
                 AudioEvent::Opened {
                     duration,
@@ -1777,7 +1812,6 @@ impl App {
                     channels,
                     stream_name,
                 } => {
-                    self.errors_in_row = 0;
                     self.st.working = false;
                     let st = &mut self.st;
                     if duration.is_some() {
@@ -1819,6 +1853,11 @@ impl App {
                     self.st.dirty = true;
                 }
             }
+        }
+        // Only audio that reaches the output proves a track works; an
+        // opened file that fails at the device still counts as an error.
+        if self.errors_in_row > 0 && self.st.engine.has_played() {
+            self.errors_in_row = 0;
         }
         if self.st.engine.finished() {
             self.track_finished();
@@ -1867,6 +1906,9 @@ impl App {
             Cmd::StopAfterCurrent => st.stop_after_current = !st.stop_after_current,
             Cmd::Next | Cmd::Previous | Cmd::NextN(_) | Cmd::StartOfList => {
                 let (shuffle, repeat) = (st.shuffle, st.repeat);
+                if st.status() == Status::Stopped {
+                    st.playlist.orphaned = false;
+                }
                 let n = st.playlist.len();
                 if n == 0 {
                     return;
@@ -1883,7 +1925,7 @@ impl App {
                 let _ = repeat;
                 if let Some(t) = target {
                     if st.status() == Status::Stopped {
-                        st.playlist.current = Some(t);
+                        st.playlist.set_current(t);
                         st.now = Default::default();
                         pl_win::ensure_visible(st, t);
                     } else {
@@ -2364,6 +2406,7 @@ impl App {
             self.st.dirty = true;
         }
         self.check_menu_outside_click();
+        self.sync_jump_dialog();
         if std::mem::take(&mut self.focus_check)
             && !self.menus.is_empty()
             && self.menu_opened_at.elapsed() > Duration::from_millis(300)
