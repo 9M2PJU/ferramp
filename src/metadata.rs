@@ -89,8 +89,8 @@ impl InfoWorker {
 
 /// File extensions the player lists when adding folders or filtering dialogs.
 pub const AUDIO_EXTENSIONS: &[&str] = &[
-    "mp3", "mp2", "mp1", "ogg", "oga", "opus", "flac", "wav", "wave", "aif", "aiff", "aifc", "m4a",
-    "m4b", "mp4", "aac", "alac", "caf", "mka", "webm", "wv",
+    "mp3", "mp2", "mp1", "ogg", "oga", "flac", "wav", "wave", "aif", "aiff", "aifc", "m4a",
+    "m4b", "mp4", "aac", "alac", "caf", "mka", "webm",
 ];
 
 pub fn is_audio_file(p: &Path) -> bool {
