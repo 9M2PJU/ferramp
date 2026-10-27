@@ -974,6 +974,35 @@ pub fn draw_vis(st: &mut State, out: &mut Bitmap, x: i32, y: i32, small: bool) {
 mod tests {
     use super::*;
 
+    use crate::audio::Engine;
+    use crate::skin::Skin;
+
+    #[test]
+    fn hit_areas_match_the_classic_layout() {
+        let mut st = State::new(Engine::headless(), Skin::builtin());
+        let w = MainWin::new();
+        assert_eq!(w.hit(&st, 50, 97), Widget::Play);
+        assert_eq!(w.hit(&st, 147, 97), Widget::Eject);
+        assert_eq!(w.hit(&st, 266, 7), Widget::Close);
+        assert_eq!(w.hit(&st, 13, 36), Widget::ClutterA);
+        assert_eq!(w.hit(&st, 150, 76), Widget::Position);
+        assert_eq!(w.hit(&st, 150, 5), Widget::TitleBar);
+        assert_eq!(w.hit(&st, 3, 60), Widget::Body);
+        st.main.shade = true;
+        assert_eq!(w.hit(&st, 180, 6), Widget::Play);
+        assert_eq!(w.hit(&st, 230, 6), Widget::Position);
+        assert_eq!(w.hit(&st, 50, 6), Widget::TitleBar);
+    }
+
+    #[test]
+    fn tooltips() {
+        let st = State::new(Engine::headless(), Skin::builtin());
+        let w = MainWin::new();
+        assert_eq!(w.tooltip(&st, 13, 36), "Toggle Always-On-Top");
+        assert_eq!(w.tooltip(&st, 180, 27), "Song Title (right-click for options)");
+        assert!(w.tooltip(&st, 50, 97).starts_with("Ferramp"));
+    }
+
     #[test]
     fn slider_math() {
         assert_eq!(volume_thumb_x(0), 0);
