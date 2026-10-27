@@ -95,6 +95,16 @@ pub fn build(id: MenuId, ctx: &MenuContext) -> Vec<Item> {
             Item::Sep,
             act("E&xit", "", Cmd::Exit),
         ],
+        MenuId::SongTitle => vec![
+            act("&File info", "Alt+3 or Dblclick", Cmd::FileInfo),
+            act("&Jump to file...", "J", Cmd::JumpToFile),
+            act("Jump to &time...", "Ctrl+J", Cmd::JumpToTime),
+            check("&Autoscroll songname", "", Cmd::ToggleAutoscroll, st.autoscroll),
+        ],
+        MenuId::Time => vec![
+            check("Time &elapsed", "(Ctrl+T toggles)", Cmd::ToggleTimeMode, !st.time_remaining),
+            check("Time re&maining", "(Ctrl+T toggles)", Cmd::ToggleTimeMode, st.time_remaining),
+        ],
         MenuId::Skins => {
             let mut v = vec![act("S&kin Browser...", "Alt+S", Cmd::SkinBrowser), Item::Sep];
             v.push(check("<Base Skin>", "", Cmd::LoadSkin(None), st.skin.path.is_none()));

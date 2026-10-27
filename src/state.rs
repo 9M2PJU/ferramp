@@ -59,6 +59,7 @@ pub struct State {
     pub doubled: bool,
     pub always_on_top: bool,
     pub easy_move: bool,
+    pub autoscroll: bool,
     pub vis_mode: VisMode,
     pub vis_opts: VisOptions,
     pub eq: EqSettings,
@@ -107,7 +108,8 @@ impl State {
             time_remaining: false,
             doubled: false,
             always_on_top: false,
-            easy_move: false,
+            easy_move: true,
+            autoscroll: true,
             vis_mode: VisMode::Analyzer,
             vis_opts: VisOptions::default(),
             eq: EqSettings::default(),
@@ -265,7 +267,7 @@ impl State {
     /// Advance timers; returns true if something visible changed.
     pub fn tick(&mut self, now: Instant) -> bool {
         let mut changed = false;
-        if !self.marquee_dragging && now >= self.marquee_resume && now.duration_since(self.last_step) >= MARQUEE_STEP {
+        if self.autoscroll && !self.marquee_dragging && now >= self.marquee_resume && now.duration_since(self.last_step) >= MARQUEE_STEP {
             self.last_step = now;
             self.marquee_step = self.marquee_step.wrapping_add(1);
             changed = true;

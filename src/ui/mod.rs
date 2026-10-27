@@ -63,6 +63,8 @@ pub enum MenuId {
     PlaylistSort,
     PlaylistMiscOptions,
     Skins,
+    SongTitle,
+    Time,
 }
 
 /// Commands: everything the user can do, from any window, menu or key.
@@ -98,6 +100,7 @@ pub enum Cmd {
     ToggleDouble,
     ToggleAlwaysOnTop,
     ToggleEasyMove,
+    ToggleAutoscroll,
     CycleVis,
     SetVisMode(vis::VisMode),
     SetVisOptions(vis::VisOptions),

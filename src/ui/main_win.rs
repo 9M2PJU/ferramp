@@ -147,6 +147,25 @@ impl MainWin {
         }
     }
 
+    /// Tooltip for the control under the mouse (as in the original:
+    /// specific texts for a few controls, the program name elsewhere).
+    pub fn tooltip(&self, st: &State, x: i32, y: i32) -> String {
+        let generic = concat!("Ferramp ", env!("CARGO_PKG_VERSION"));
+        match self.hit(st, x, y) {
+            Widget::Options => "Ferramp Menu".into(),
+            Widget::Minimize => "Minimize".into(),
+            Widget::Shade => "Toggle Windowshade Mode".into(),
+            Widget::Close => "Close".into(),
+            Widget::ClutterO if !st.main.shade => "Options Menu".into(),
+            Widget::ClutterA if !st.main.shade => "Toggle Always-On-Top".into(),
+            Widget::ClutterI if !st.main.shade => "File Info Box".into(),
+            Widget::ClutterD if !st.main.shade => "Toggle Doublesize Mode".into(),
+            Widget::ClutterV if !st.main.shade => "Visualization Menu".into(),
+            Widget::Marquee => "Song Title (right-click for options)".into(),
+            _ => generic.into(),
+        }
+    }
+
     // ------------------------------------------------------------------
     // Rendering
 
@@ -420,7 +439,9 @@ impl MainWin {
             MouseEvent::Down { x, y, button: Button::Right, .. } => {
                 let w = self.hit(st, x, y);
                 let menu = match w {
-                    Widget::Vis => MenuId::Vis,
+                    Widget::Vis | Widget::ClutterV => MenuId::Vis,
+                    Widget::Marquee => MenuId::SongTitle,
+                    Widget::Time => MenuId::Time,
                     _ => MenuId::Main,
                 };
                 st.push(Cmd::ShowMenu(menu, x, y, WinKind::Main));
@@ -431,9 +452,20 @@ impl MainWin {
                     st.push(Cmd::ToggleShade(WinKind::Main));
                     return wm;
                 }
+                if double && matches!(w, Widget::Marquee) {
+                    st.push(Cmd::FileInfo);
+                    return wm;
+                }
                 match w {
-                    Widget::TitleBar | Widget::Body => {
+                    Widget::TitleBar => {
                         wm.push(WmRequest::BeginMove);
+                        return wm;
+                    }
+                    // EasyMove: drag the window from anywhere.
+                    Widget::Body => {
+                        if st.easy_move {
+                            wm.push(WmRequest::BeginMove);
+                        }
                         return wm;
                     }
                     _ => {}

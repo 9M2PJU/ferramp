@@ -90,6 +90,13 @@ struct MenuPopup {
     y: i32,
 }
 
+struct Tooltip {
+    os: OsWin,
+    w: i32,
+    h: i32,
+    text: String,
+}
+
 struct DialogWin {
     dialog: Dialog,
     os: OsWin,
@@ -134,6 +141,9 @@ pub struct App {
     created: bool,
     exiting: bool,
     cli_skin: bool,
+    tip: Option<Tooltip>,
+    hover_tip: Option<(WinKind, String, Instant)>,
+    next_frame: Instant,
 }
 
 impl App {
@@ -177,6 +187,9 @@ impl App {
             created: false,
             exiting: false,
             cli_skin: false,
+            tip: None,
+            hover_tip: None,
+            next_frame: Instant::now(),
         };
         app.apply_settings();
         app.load_libraries();
@@ -302,7 +315,8 @@ impl App {
         st.time_remaining = s.get_bool("time_remaining", false);
         st.doubled = s.get_bool("doublesize", false);
         st.always_on_top = s.get_bool("always_on_top", false);
-        st.easy_move = s.get_bool("easymove", false);
+        st.easy_move = s.get_bool("easymove", true);
+        st.autoscroll = s.get_bool("autoscroll", true);
         st.vis_mode = VisMode::parse(s.get_str("vis_mode").unwrap_or("analyzer"));
         st.vis_opts.peaks = s.get_bool("vis_peaks", true);
         st.vis_opts.wide_bands = s.get_bool("vis_wide", true);
@@ -350,6 +364,7 @@ impl App {
         s.set_bool("doublesize", st.doubled);
         s.set_bool("always_on_top", st.always_on_top);
         s.set_bool("easymove", st.easy_move);
+        s.set_bool("autoscroll", st.autoscroll);
         s.set("vis_mode", st.vis_mode.as_str());
         s.set_bool("vis_peaks", st.vis_opts.peaks);
         s.set_bool("vis_wide", st.vis_opts.wide_bands);
@@ -1183,6 +1198,59 @@ impl App {
     }
 
     // ------------------------------------------------------------------
+    // Tooltips
+
+    fn hide_tooltip(&mut self) {
+        self.tip = None;
+    }
+
+    fn update_tooltip(&mut self, el: &ActiveEventLoop) {
+        let Some((k, text, since)) = self.hover_tip.clone() else {
+            self.hide_tooltip();
+            return;
+        };
+        let busy = !self.menus.is_empty() || self.drag.is_some() || self.capture.is_some() || mouse_button_down();
+        if busy || since.elapsed() > Duration::from_secs(7) {
+            self.hide_tooltip();
+            if busy {
+                self.hover_tip = None;
+            }
+            return;
+        }
+        if self.tip.is_some() || since.elapsed() < Duration::from_millis(600) {
+            return;
+        }
+        let _ = k;
+        let Some((cx, cy)) = crate::platform::global_cursor() else { return };
+        let fonts = &self.st.fonts;
+        let tw = fonts.measure(&text, menu::FONT_PX, crate::text::Weight::Regular);
+        let (w, h) = (tw + 6, 16);
+        let s = self.ui_scale;
+        #[allow(unused_mut)]
+        let mut attrs = Window::default_attributes()
+            .with_decorations(false)
+            .with_resizable(false)
+            .with_inner_size(PhysicalSize::new((w * s) as u32, (h * s) as u32))
+            .with_position(PhysicalPosition::new(cx, cy + 20 * s))
+            .with_window_level(WindowLevel::AlwaysOnTop)
+            .with_active(false);
+        #[cfg(all(unix, not(target_os = "macos")))]
+        {
+            use winit::platform::x11::{WindowAttributesExtX11, WindowType};
+            attrs = attrs.with_override_redirect(true).with_x11_window_type(vec![WindowType::Tooltip]);
+        }
+        #[cfg(windows)]
+        {
+            use winit::platform::windows::WindowAttributesExtWindows;
+            attrs = attrs.with_skip_taskbar(true);
+        }
+        let Ok(window) = el.create_window(attrs) else { return };
+        let Some(os) = OsWin::new(window) else { return };
+        os.window.request_redraw();
+        self.tip = Some(Tooltip { os, w, h, text });
+    }
+
+    // ------------------------------------------------------------------
     // Dialogs
 
     fn open_dialog(&mut self, el: &ActiveEventLoop, dialog: Dialog) {
@@ -1636,6 +1704,10 @@ impl App {
                 self.apply_window_level();
             }
             Cmd::ToggleEasyMove => st.easy_move = !st.easy_move,
+            Cmd::ToggleAutoscroll => {
+                st.autoscroll = !st.autoscroll;
+                st.marquee_step = 0;
+            }
             Cmd::CycleVis => {
                 st.vis_mode = st.vis_mode.next();
                 st.vis.reset();
@@ -1981,6 +2053,19 @@ impl App {
             }
         }
         self.poll_audio();
+        // Everything below runs at the frame rate; other wake-ups (input,
+        // redraw requests) must not spin the loop.
+        if now < self.next_frame {
+            if self.st.dirty {
+                self.st.dirty = false;
+                self.redraw_all();
+                for m in &self.menus {
+                    m.os.window.request_redraw();
+                }
+            }
+            el.set_control_flow(ControlFlow::WaitUntil(self.next_frame));
+            return;
+        }
         // Fade-out stop.
         if let Some((t0, vol)) = self.st.fade {
             let f = t0.elapsed().as_secs_f32() / 1.5;
@@ -1997,6 +2082,7 @@ impl App {
             self.st.dirty = true;
         }
         self.check_menu_outside_click();
+        self.update_tooltip(el);
         if self.drag.is_some() {
             if mouse_button_down() || crate::platform::global_cursor().is_none() {
                 self.update_drag();
@@ -2052,12 +2138,10 @@ impl App {
             || self.drag.is_some()
             || !self.menus.is_empty()
             || self.st.message.is_some()
+            || self.hover_tip.is_some()
             || self.main.wants_animation(&self.st);
-        if animating {
-            el.set_control_flow(ControlFlow::WaitUntil(now + FRAME));
-        } else {
-            el.set_control_flow(ControlFlow::WaitUntil(now + Duration::from_millis(250)));
-        }
+        self.next_frame = now + if animating { FRAME } else { Duration::from_millis(250) };
+        el.set_control_flow(ControlFlow::WaitUntil(self.next_frame));
     }
 }
 
@@ -2087,6 +2171,19 @@ impl ApplicationHandler<UserEvent> for App {
         if let WindowEvent::ModifiersChanged(m) = &event {
             let s: ModifiersState = m.state();
             self.mods = Mods { shift: s.shift_key(), ctrl: s.control_key() || s.super_key(), alt: s.alt_key() };
+            return;
+        }
+        if let Some(t) = &mut self.tip
+            && t.os.window.id() == id
+        {
+            if let WindowEvent::RedrawRequested = event {
+                let mut f = Bitmap::new(t.w, t.h, crate::gfx::rgb(255, 255, 225));
+                f.rect_outline(0, 0, t.w, t.h, crate::gfx::rgb(0, 0, 0));
+                let clip = crate::gfx::Rect::new(1, 1, t.w - 2, t.h - 2);
+                self.st.fonts.draw(&mut f, &t.text, 3, 1, menu::FONT_PX, crate::text::Weight::Regular, crate::gfx::rgb(0, 0, 0), clip, true);
+                t.os.frame = f;
+                t.os.present(self.ui_scale);
+            }
             return;
         }
         // Pop-up menus.
@@ -2238,10 +2335,26 @@ impl ApplicationHandler<UserEvent> for App {
                     ((gx - g.x) / s, (gy - g.y) / s)
                 };
                 self.hover_y.insert(k, y);
+                if k == WinKind::Main && self.capture.is_none() {
+                    let text = self.main.tooltip(&self.st, x, y);
+                    if self.hover_tip.as_ref().map(|h| &h.1) != Some(&text) {
+                        self.hover_tip = Some((k, text, Instant::now()));
+                        self.hide_tooltip();
+                    }
+                }
                 self.window_mouse(target, MouseEvent::Move { x, y });
                 self.update_cursor(k);
             }
+            WindowEvent::CursorLeft { .. } => {
+                if self.hover_tip.as_ref().is_some_and(|h| h.0 == k) {
+                    self.hover_tip = None;
+                    self.hide_tooltip();
+                }
+            }
             WindowEvent::MouseInput { state, button, .. } => {
+                self.next_frame = Instant::now();
+                self.hover_tip = None;
+                self.hide_tooltip();
                 let pos = self.wins.get(&k).map(|w| w.cursor).unwrap_or_default();
                 let (x, y) = self.to_skin(k, pos);
                 let b = match button {
