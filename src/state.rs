@@ -61,6 +61,9 @@ pub struct State {
     pub always_on_top: bool,
     pub easy_move: bool,
     pub autoscroll: bool,
+    /// Playlist editor preferences.
+    pub smooth_text: bool,
+    pub show_numbers: bool,
     pub vis_mode: VisMode,
     pub vis_opts: VisOptions,
     pub eq: EqSettings,
@@ -114,6 +117,8 @@ impl State {
             always_on_top: false,
             easy_move: true,
             autoscroll: true,
+            smooth_text: false,
+            show_numbers: true,
             vis_mode: VisMode::Analyzer,
             vis_opts: VisOptions::default(),
             eq: EqSettings::default(),

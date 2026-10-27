@@ -490,7 +490,7 @@ impl PlWin {
             let ty = y;
             let dur_x = list.x + list.w - 3;
             let title_clip_w = list.w - dur_w - 8;
-            let label = format!("{}. {}", idx + 1, e.title);
+            let label = if st.show_numbers { format!("{}. {}", idx + 1, e.title) } else { e.title.clone() };
             let label = fonts.ellipsize(&label, FONT_PX, Weight::Regular, title_clip_w.max(10));
             fonts.draw(
                 out,
@@ -501,7 +501,7 @@ impl PlWin {
                 Weight::Regular,
                 color,
                 Rect::new(list.x, y, title_clip_w + 2, ROW_H),
-                true,
+                !st.smooth_text,
             );
             if let Some(d) = e.duration {
                 let t = format_time(d);
@@ -515,7 +515,7 @@ impl PlWin {
                     Weight::Regular,
                     color,
                     Rect::new(list.x, y, list.w, ROW_H),
-                    true,
+                    !st.smooth_text,
                 );
             }
         }
