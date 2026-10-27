@@ -1,4 +1,9 @@
 //! Ferramp: a from-scratch, cross-platform reimplementation of the classic
+#![allow(
+    clippy::too_many_arguments,
+    clippy::type_complexity,
+    clippy::needless_range_loop
+)]
 //! skinnable desktop audio player.
 
 /// Diagnostics on stderr when FERRAMP_DEBUG is set.
@@ -58,7 +63,10 @@ fn main() {
                 i += 1;
             }
             "--dump-skin" => {
-                let dir = args.get(i + 1).cloned().unwrap_or_else(|| "skin-dump".into());
+                let dir = args
+                    .get(i + 1)
+                    .cloned()
+                    .unwrap_or_else(|| "skin-dump".into());
                 render::dump_builtin_skin(std::path::Path::new(&dir));
                 return;
             }

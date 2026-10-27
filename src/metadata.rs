@@ -43,7 +43,8 @@ pub fn read(path: &Path) -> Option<TrackInfo> {
     };
     if let Some(tag) = tagged.primary_tag().or_else(|| tagged.first_tag()) {
         let clean = |s: Option<std::borrow::Cow<'_, str>>| {
-            s.map(|v| v.trim().trim_matches('\0').to_string()).filter(|v| !v.is_empty())
+            s.map(|v| v.trim().trim_matches('\0').to_string())
+                .filter(|v| !v.is_empty())
         };
         info.artist = clean(tag.artist());
         info.title = clean(tag.title());
@@ -88,8 +89,8 @@ impl InfoWorker {
 
 /// File extensions the player lists when adding folders or filtering dialogs.
 pub const AUDIO_EXTENSIONS: &[&str] = &[
-    "mp3", "mp2", "mp1", "ogg", "oga", "opus", "flac", "wav", "wave", "aif", "aiff", "aifc", "m4a", "m4b", "mp4", "aac",
-    "alac", "caf", "mka", "webm", "wv",
+    "mp3", "mp2", "mp1", "ogg", "oga", "opus", "flac", "wav", "wave", "aif", "aiff", "aifc", "m4a",
+    "m4b", "mp4", "aac", "alac", "caf", "mka", "webm", "wv",
 ];
 
 pub fn is_audio_file(p: &Path) -> bool {

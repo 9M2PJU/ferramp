@@ -30,7 +30,13 @@ pub fn dump_builtin_skin(dir: &Path) {
     }
 }
 
-fn render(st: &mut State, k: WinKind, main: &mut MainWin, eq: &mut EqWin, pl: &mut PlWin) -> Bitmap {
+fn render(
+    st: &mut State,
+    k: WinKind,
+    main: &mut MainWin,
+    eq: &mut EqWin,
+    pl: &mut PlWin,
+) -> Bitmap {
     let (w, h) = st.base_size(k);
     let mut b = Bitmap::new(w, h, 0xFF00_0000);
     match k {
@@ -62,7 +68,10 @@ fn render_scenarios(dir: &Path, skin: &Skin) {
     st.repeat = true;
     st.volume = 30;
     st.balance = -40;
-    save(&render(&mut st, WinKind::Main, &mut main, &mut eq, &mut pl), &dir.join("sc-toggles-main.png"));
+    save(
+        &render(&mut st, WinKind::Main, &mut main, &mut eq, &mut pl),
+        &dir.join("sc-toggles-main.png"),
+    );
     // Equalizer values (0 = +12 dB, 63 = -12 dB, 31 = centre).
     let mut st = fresh();
     st.focused = Some(WinKind::Eq);
@@ -70,21 +79,39 @@ fn render_scenarios(dir: &Path, skin: &Skin) {
     st.eq_auto = true;
     st.eq.preamp = 0;
     st.eq.bands = [63, 0, 31, 63, 0, 31, 63, 0, 31, 63];
-    save(&render(&mut st, WinKind::Eq, &mut main, &mut eq, &mut pl), &dir.join("sc-eqvals-eq.png"));
+    save(
+        &render(&mut st, WinKind::Eq, &mut main, &mut eq, &mut pl),
+        &dir.join("sc-eqvals-eq.png"),
+    );
     // Window shade modes.
     let mut st = fresh();
     st.main.shade = true;
     st.eqw.shade = true;
     st.pl.shade = true;
-    save(&render(&mut st, WinKind::Main, &mut main, &mut eq, &mut pl), &dir.join("sc-shade-main.png"));
-    save(&render(&mut st, WinKind::Eq, &mut main, &mut eq, &mut pl), &dir.join("sc-shade-eq.png"));
-    save(&render(&mut st, WinKind::Playlist, &mut main, &mut eq, &mut pl), &dir.join("sc-shade-pl.png"));
+    save(
+        &render(&mut st, WinKind::Main, &mut main, &mut eq, &mut pl),
+        &dir.join("sc-shade-main.png"),
+    );
+    save(
+        &render(&mut st, WinKind::Eq, &mut main, &mut eq, &mut pl),
+        &dir.join("sc-shade-eq.png"),
+    );
+    save(
+        &render(&mut st, WinKind::Playlist, &mut main, &mut eq, &mut pl),
+        &dir.join("sc-shade-pl.png"),
+    );
     // Resized playlist.
     let mut st = fresh();
     st.pl_size = (3, 2);
-    save(&render(&mut st, WinKind::Playlist, &mut main, &mut eq, &mut pl), &dir.join("sc-plwide-pl.png"));
+    save(
+        &render(&mut st, WinKind::Playlist, &mut main, &mut eq, &mut pl),
+        &dir.join("sc-plwide-pl.png"),
+    );
     st.pl_size = (4, 2);
-    save(&render(&mut st, WinKind::Playlist, &mut main, &mut eq, &mut pl), &dir.join("sc-plwide4-pl.png"));
+    save(
+        &render(&mut st, WinKind::Playlist, &mut main, &mut eq, &mut pl),
+        &dir.join("sc-plwide4-pl.png"),
+    );
 }
 
 pub fn render_all(dir: &Path, skin_path: Option<&str>, files: &[String]) {
@@ -116,16 +143,36 @@ pub fn render_all(dir: &Path, skin_path: Option<&str>, files: &[String]) {
     let (mut main, mut eq, mut pl) = (MainWin::new(), EqWin::new(), PlWin::new());
     st.focused = Some(WinKind::Main);
 
-    save(&render(&mut st, WinKind::Main, &mut main, &mut eq, &mut pl), &dir.join("main-stopped.png"));
+    save(
+        &render(&mut st, WinKind::Main, &mut main, &mut eq, &mut pl),
+        &dir.join("main-stopped.png"),
+    );
     st.pl_size = (0, 0);
-    save(&render(&mut st, WinKind::Playlist, &mut main, &mut eq, &mut pl), &dir.join("playlist-small.png"));
+    save(
+        &render(&mut st, WinKind::Playlist, &mut main, &mut eq, &mut pl),
+        &dir.join("playlist-small.png"),
+    );
     st.pl_size = (0, 4);
-    save(&render(&mut st, WinKind::Eq, &mut main, &mut eq, &mut pl), &dir.join("eq-default.png"));
-    save(&render(&mut st, WinKind::Playlist, &mut main, &mut eq, &mut pl), &dir.join("playlist-default.png"));
+    save(
+        &render(&mut st, WinKind::Eq, &mut main, &mut eq, &mut pl),
+        &dir.join("eq-default.png"),
+    );
+    save(
+        &render(&mut st, WinKind::Playlist, &mut main, &mut eq, &mut pl),
+        &dir.join("playlist-default.png"),
+    );
 
     // Playing: a synthetic signal feeds the visualiser.
-    let duration = st.playlist.entries.first().and_then(|e| e.duration).unwrap_or(225.0);
-    let pos = std::env::var("FERRAMP_RENDER_POS").ok().and_then(|v| v.parse().ok()).unwrap_or(83.0);
+    let duration = st
+        .playlist
+        .entries
+        .first()
+        .and_then(|e| e.duration)
+        .unwrap_or(225.0);
+    let pos = std::env::var("FERRAMP_RENDER_POS")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(83.0);
     st.engine.simulate(Status::Playing, pos);
     st.now.duration = Some(duration);
     st.now.kbps = 128;
@@ -147,15 +194,24 @@ pub fn render_all(dir: &Path, skin_path: Option<&str>, files: &[String]) {
     for _ in 0..4 {
         st.vis.analyze(&samples, false, &opts);
     }
-    save(&render(&mut st, WinKind::Main, &mut main, &mut eq, &mut pl), &dir.join("main-playing.png"));
+    save(
+        &render(&mut st, WinKind::Main, &mut main, &mut eq, &mut pl),
+        &dir.join("main-playing.png"),
+    );
     st.vis_mode = crate::ui::vis::VisMode::Oscilloscope;
-    save(&render(&mut st, WinKind::Main, &mut main, &mut eq, &mut pl), &dir.join("main-scope.png"));
+    save(
+        &render(&mut st, WinKind::Main, &mut main, &mut eq, &mut pl),
+        &dir.join("main-scope.png"),
+    );
     st.vis_mode = crate::ui::vis::VisMode::Analyzer;
     st.main.shade = true;
     for _ in 0..4 {
         st.vis.analyze(&samples, true, &opts);
     }
-    save(&render(&mut st, WinKind::Main, &mut main, &mut eq, &mut pl), &dir.join("main-shade.png"));
+    save(
+        &render(&mut st, WinKind::Main, &mut main, &mut eq, &mut pl),
+        &dir.join("main-shade.png"),
+    );
     st.main.shade = false;
 
     st.focused = Some(WinKind::Eq);
@@ -163,9 +219,15 @@ pub fn render_all(dir: &Path, skin_path: Option<&str>, files: &[String]) {
     let rock = crate::ui::menu::BUILTIN_PRESETS[8];
     st.eq.preamp = rock.1;
     st.eq.bands = rock.2;
-    save(&render(&mut st, WinKind::Eq, &mut main, &mut eq, &mut pl), &dir.join("eq.png"));
+    save(
+        &render(&mut st, WinKind::Eq, &mut main, &mut eq, &mut pl),
+        &dir.join("eq.png"),
+    );
     st.eqw.shade = true;
-    save(&render(&mut st, WinKind::Eq, &mut main, &mut eq, &mut pl), &dir.join("eq-shade.png"));
+    save(
+        &render(&mut st, WinKind::Eq, &mut main, &mut eq, &mut pl),
+        &dir.join("eq-shade.png"),
+    );
     st.eqw.shade = false;
 
     st.focused = Some(WinKind::Playlist);
@@ -173,10 +235,19 @@ pub fn render_all(dir: &Path, skin_path: Option<&str>, files: &[String]) {
     if st.playlist.len() > 1 {
         st.playlist.entries[1].selected = true;
     }
-    save(&render(&mut st, WinKind::Playlist, &mut main, &mut eq, &mut pl), &dir.join("playlist.png"));
+    save(
+        &render(&mut st, WinKind::Playlist, &mut main, &mut eq, &mut pl),
+        &dir.join("playlist.png"),
+    );
     st.pl_size = (3, 4);
-    save(&render(&mut st, WinKind::Playlist, &mut main, &mut eq, &mut pl), &dir.join("playlist-wide.png"));
+    save(
+        &render(&mut st, WinKind::Playlist, &mut main, &mut eq, &mut pl),
+        &dir.join("playlist-wide.png"),
+    );
     st.pl.shade = true;
-    save(&render(&mut st, WinKind::Playlist, &mut main, &mut eq, &mut pl), &dir.join("playlist-shade.png"));
+    save(
+        &render(&mut st, WinKind::Playlist, &mut main, &mut eq, &mut pl),
+        &dir.join("playlist-shade.png"),
+    );
     println!("rendered to {}", dir.display());
 }

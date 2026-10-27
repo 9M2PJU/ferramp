@@ -29,12 +29,39 @@ pub enum DialogKind {
 
 #[derive(Clone, Debug)]
 pub enum Control {
-    Label { text: String, rect: Rect, bold: bool },
-    Input { text: String, cursor: usize, rect: Rect },
-    List { items: Vec<String>, values: Vec<usize>, selected: Option<usize>, scroll: usize, rect: Rect },
-    Button { label: String, rect: Rect, id: &'static str, default: bool },
-    Check { label: String, checked: bool, rect: Rect, id: &'static str },
-    Group { label: String, rect: Rect },
+    Label {
+        text: String,
+        rect: Rect,
+        bold: bool,
+    },
+    Input {
+        text: String,
+        cursor: usize,
+        rect: Rect,
+    },
+    List {
+        items: Vec<String>,
+        values: Vec<usize>,
+        selected: Option<usize>,
+        scroll: usize,
+        rect: Rect,
+    },
+    Button {
+        label: String,
+        rect: Rect,
+        id: &'static str,
+        default: bool,
+    },
+    Check {
+        label: String,
+        checked: bool,
+        rect: Rect,
+        id: &'static str,
+    },
+    Group {
+        label: String,
+        rect: Rect,
+    },
 }
 
 /// Something the dialog wants done.
@@ -76,7 +103,9 @@ fn r(x: i32, y: i32, w: i32, h: i32) -> Rect {
 
 impl Dialog {
     fn new(kind: DialogKind, title: &str, w: i32, h: i32, controls: Vec<Control>) -> Dialog {
-        let focus = controls.iter().position(|c| matches!(c, Control::Input { .. } | Control::List { .. }));
+        let focus = controls
+            .iter()
+            .position(|c| matches!(c, Control::Input { .. } | Control::List { .. }));
         Dialog {
             kind,
             title: title.into(),
@@ -110,12 +139,36 @@ impl Dialog {
         let mut c = vec![];
         let list_y = if saving { 36 } else { 10 };
         if saving {
-            c.push(Control::Label { text: "Name:".into(), rect: r(10, 12, 40, 14), bold: false });
-            c.push(Control::Input { text: String::new(), cursor: 0, rect: r(50, 8, 220, 21) });
+            c.push(Control::Label {
+                text: "Name:".into(),
+                rect: r(10, 12, 40, 14),
+                bold: false,
+            });
+            c.push(Control::Input {
+                text: String::new(),
+                cursor: 0,
+                rect: r(50, 8, 220, 21),
+            });
         }
-        c.push(Control::List { items: names.clone(), values, selected: if names.is_empty() { None } else { Some(0) }, scroll: 0, rect: r(10, list_y, 260, 180) });
-        c.push(Control::Button { label: button.into(), rect: r(114, list_y + 188, 75, 23), id: "ok", default: true });
-        c.push(Control::Button { label: "Cancel".into(), rect: r(195, list_y + 188, 75, 23), id: "cancel", default: false });
+        c.push(Control::List {
+            items: names.clone(),
+            values,
+            selected: if names.is_empty() { None } else { Some(0) },
+            scroll: 0,
+            rect: r(10, list_y, 260, 180),
+        });
+        c.push(Control::Button {
+            label: button.into(),
+            rect: r(114, list_y + 188, 75, 23),
+            id: "ok",
+            default: true,
+        });
+        c.push(Control::Button {
+            label: "Cancel".into(),
+            rect: r(195, list_y + 188, 75, 23),
+            id: "cancel",
+            default: false,
+        });
         let mut d = Dialog::new(DialogKind::EqPresets, title, 280, list_y + 222, c);
         d.entries = names;
         d.eq_op = Some(op);
@@ -128,10 +181,31 @@ impl Dialog {
     pub fn bookmarks(names: Vec<String>) -> Dialog {
         let values = (0..names.len()).collect();
         let c = vec![
-            Control::List { items: names.clone(), values, selected: if names.is_empty() { None } else { Some(0) }, scroll: 0, rect: r(10, 10, 380, 200) },
-            Control::Button { label: "Play".into(), rect: r(10, 218, 75, 23), id: "ok", default: true },
-            Control::Button { label: "Remove".into(), rect: r(91, 218, 75, 23), id: "remove", default: false },
-            Control::Button { label: "Close".into(), rect: r(315, 218, 75, 23), id: "cancel", default: false },
+            Control::List {
+                items: names.clone(),
+                values,
+                selected: if names.is_empty() { None } else { Some(0) },
+                scroll: 0,
+                rect: r(10, 10, 380, 200),
+            },
+            Control::Button {
+                label: "Play".into(),
+                rect: r(10, 218, 75, 23),
+                id: "ok",
+                default: true,
+            },
+            Control::Button {
+                label: "Remove".into(),
+                rect: r(91, 218, 75, 23),
+                id: "remove",
+                default: false,
+            },
+            Control::Button {
+                label: "Close".into(),
+                rect: r(315, 218, 75, 23),
+                id: "cancel",
+                default: false,
+            },
         ];
         let mut d = Dialog::new(DialogKind::Bookmarks, "Edit Bookmarks", 400, 252, c);
         d.entries = names;
@@ -140,44 +214,129 @@ impl Dialog {
 
     pub fn playlist_entry(location: &str) -> Dialog {
         let c = vec![
-            Control::Label { text: "Location of the playlist entry:".into(), rect: r(10, 12, 340, 14), bold: false },
-            Control::Input { text: location.to_string(), cursor: location.chars().count(), rect: r(10, 30, 340, 21) },
-            Control::Button { label: "OK".into(), rect: r(194, 62, 75, 23), id: "ok", default: true },
-            Control::Button { label: "Cancel".into(), rect: r(275, 62, 75, 23), id: "cancel", default: false },
+            Control::Label {
+                text: "Location of the playlist entry:".into(),
+                rect: r(10, 12, 340, 14),
+                bold: false,
+            },
+            Control::Input {
+                text: location.to_string(),
+                cursor: location.chars().count(),
+                rect: r(10, 30, 340, 21),
+            },
+            Control::Button {
+                label: "OK".into(),
+                rect: r(194, 62, 75, 23),
+                id: "ok",
+                default: true,
+            },
+            Control::Button {
+                label: "Cancel".into(),
+                rect: r(275, 62, 75, 23),
+                id: "cancel",
+                default: false,
+            },
         ];
         Dialog::new(DialogKind::PlaylistEntry, "Playlist entry", 360, 96, c)
     }
 
     pub fn vis_options(mode: crate::ui::vis::VisMode, o: crate::ui::vis::VisOptions) -> Dialog {
         use crate::ui::vis::{AnalyzerStyle, OscStyle, VisMode};
-        let ck = |label: &str, on: bool, x: i32, y: i32, id: &'static str| Control::Check { label: label.into(), checked: on, rect: r(x, y, 140, 16), id };
+        let ck = |label: &str, on: bool, x: i32, y: i32, id: &'static str| Control::Check {
+            label: label.into(),
+            checked: on,
+            rect: r(x, y, 140, 16),
+            id,
+        };
         let speeds = ["Slower", "Slow", "Moderate", "Fast", "Faster"];
         let speed_ids_f = ["f0", "f1", "f2", "f3", "f4"];
         let speed_ids_p = ["p0", "p1", "p2", "p3", "p4"];
         let mut c = vec![
-            Control::Group { label: "Display".into(), rect: r(10, 8, 150, 82) },
-            ck("Spectrum analyzer", mode == VisMode::Analyzer, 20, 26, "m-an"),
-            ck("Oscilloscope", mode == VisMode::Oscilloscope, 20, 46, "m-osc"),
+            Control::Group {
+                label: "Display".into(),
+                rect: r(10, 8, 150, 82),
+            },
+            ck(
+                "Spectrum analyzer",
+                mode == VisMode::Analyzer,
+                20,
+                26,
+                "m-an",
+            ),
+            ck(
+                "Oscilloscope",
+                mode == VisMode::Oscilloscope,
+                20,
+                46,
+                "m-osc",
+            ),
             ck("Disabled", mode == VisMode::Off, 20, 66, "m-off"),
-            Control::Group { label: "Analyzer".into(), rect: r(170, 8, 160, 162) },
-            ck("Normal style", o.analyzer == AnalyzerStyle::Normal, 180, 26, "a-n"),
-            ck("Fire style", o.analyzer == AnalyzerStyle::Fire, 180, 46, "a-f"),
-            ck("Line style", o.analyzer == AnalyzerStyle::Line, 180, 66, "a-l"),
+            Control::Group {
+                label: "Analyzer".into(),
+                rect: r(170, 8, 160, 162),
+            },
+            ck(
+                "Normal style",
+                o.analyzer == AnalyzerStyle::Normal,
+                180,
+                26,
+                "a-n",
+            ),
+            ck(
+                "Fire style",
+                o.analyzer == AnalyzerStyle::Fire,
+                180,
+                46,
+                "a-f",
+            ),
+            ck(
+                "Line style",
+                o.analyzer == AnalyzerStyle::Line,
+                180,
+                66,
+                "a-l",
+            ),
             ck("Show peaks", o.peaks, 180, 96, "peaks"),
             ck("Thin bands", !o.wide_bands, 180, 126, "thin"),
             ck("Wide bands", o.wide_bands, 180, 146, "wide"),
-            Control::Group { label: "Oscilloscope".into(), rect: r(10, 98, 150, 72) },
+            Control::Group {
+                label: "Oscilloscope".into(),
+                rect: r(10, 98, 150, 72),
+            },
             ck("Dots", o.osc == OscStyle::Dots, 20, 116, "o-d"),
             ck("Lines", o.osc == OscStyle::Lines, 20, 134, "o-l"),
             ck("Solid", o.osc == OscStyle::Solid, 20, 152, "o-s"),
-            Control::Group { label: "Analyzer falloff".into(), rect: r(10, 178, 150, 120) },
-            Control::Group { label: "Peak falloff".into(), rect: r(170, 178, 160, 120) },
+            Control::Group {
+                label: "Analyzer falloff".into(),
+                rect: r(10, 178, 150, 120),
+            },
+            Control::Group {
+                label: "Peak falloff".into(),
+                rect: r(170, 178, 160, 120),
+            },
         ];
         for (i, sp) in speeds.iter().enumerate() {
-            c.push(ck(sp, o.falloff == i as u8, 20, 196 + i as i32 * 20, speed_ids_f[i]));
-            c.push(ck(sp, o.peak_falloff == i as u8, 180, 196 + i as i32 * 20, speed_ids_p[i]));
+            c.push(ck(
+                sp,
+                o.falloff == i as u8,
+                20,
+                196 + i as i32 * 20,
+                speed_ids_f[i],
+            ));
+            c.push(ck(
+                sp,
+                o.peak_falloff == i as u8,
+                180,
+                196 + i as i32 * 20,
+                speed_ids_p[i],
+            ));
         }
-        c.push(Control::Button { label: "Close".into(), rect: r(255, 306, 75, 23), id: "ok", default: true });
+        c.push(Control::Button {
+            label: "Close".into(),
+            rect: r(255, 306, 75, 23),
+            id: "ok",
+            default: true,
+        });
         let mut d = Dialog::new(DialogKind::VisOptions, "Visualization options", 340, 338, c);
         d.vis = Some((mode, o));
         d
@@ -202,7 +361,9 @@ impl Dialog {
                     "o-l" => o.osc == OscStyle::Lines,
                     "o-s" => o.osc == OscStyle::Solid,
                     f if f.starts_with('f') => o.falloff == f[1..].parse::<u8>().unwrap_or(9),
-                    p if p.starts_with('p') && p != "peaks" => o.peak_falloff == p[1..].parse::<u8>().unwrap_or(9),
+                    p if p.starts_with('p') && p != "peaks" => {
+                        o.peak_falloff == p[1..].parse::<u8>().unwrap_or(9)
+                    }
                     other => {
                         let _ = other;
                         *checked
@@ -226,20 +387,51 @@ impl Dialog {
         let mut c: Vec<Control> = lines
             .iter()
             .enumerate()
-            .map(|(i, (t, b))| Control::Label { text: t.to_string(), rect: r(16, 16 + i as i32 * 16, 300, 14), bold: *b })
+            .map(|(i, (t, b))| Control::Label {
+                text: t.to_string(),
+                rect: r(16, 16 + i as i32 * 16, 300, 14),
+                bold: *b,
+            })
             .collect();
-        c.push(Control::Button { label: "OK".into(), rect: r(132, 156, 75, 23), id: "ok", default: true });
+        c.push(Control::Button {
+            label: "OK".into(),
+            rect: r(132, 156, 75, 23),
+            id: "ok",
+            default: true,
+        });
         Dialog::new(DialogKind::About, "About Ferramp", 340, 192, c)
     }
 
     pub fn open_url(add: bool) -> Dialog {
         let c = vec![
-            Control::Label { text: "Enter location (URL or file path) to open:".into(), rect: r(10, 12, 340, 14), bold: false },
-            Control::Input { text: String::new(), cursor: 0, rect: r(10, 30, 340, 21) },
-            Control::Button { label: "Open".into(), rect: r(194, 62, 75, 23), id: "ok", default: true },
-            Control::Button { label: "Cancel".into(), rect: r(275, 62, 75, 23), id: "cancel", default: false },
+            Control::Label {
+                text: "Enter location (URL or file path) to open:".into(),
+                rect: r(10, 12, 340, 14),
+                bold: false,
+            },
+            Control::Input {
+                text: String::new(),
+                cursor: 0,
+                rect: r(10, 30, 340, 21),
+            },
+            Control::Button {
+                label: "Open".into(),
+                rect: r(194, 62, 75, 23),
+                id: "ok",
+                default: true,
+            },
+            Control::Button {
+                label: "Cancel".into(),
+                rect: r(275, 62, 75, 23),
+                id: "cancel",
+                default: false,
+            },
         ];
-        let (kind, title) = if add { (DialogKind::AddUrl, "Add Location") } else { (DialogKind::OpenUrl, "Open Location") };
+        let (kind, title) = if add {
+            (DialogKind::AddUrl, "Add Location")
+        } else {
+            (DialogKind::OpenUrl, "Open Location")
+        };
         Dialog::new(kind, title, 360, 96, c)
     }
 
@@ -250,23 +442,74 @@ impl Dialog {
             None => format!("Current: {}", fmt(current)),
         };
         let c = vec![
-            Control::Label { text: info, rect: r(10, 10, 260, 14), bold: false },
-            Control::Label { text: "Jump to (mm:ss):".into(), rect: r(10, 34, 100, 14), bold: false },
-            Control::Input { text: fmt(current), cursor: fmt(current).len(), rect: r(110, 30, 160, 21) },
-            Control::Button { label: "Jump".into(), rect: r(114, 62, 75, 23), id: "ok", default: true },
-            Control::Button { label: "Cancel".into(), rect: r(195, 62, 75, 23), id: "cancel", default: false },
+            Control::Label {
+                text: info,
+                rect: r(10, 10, 260, 14),
+                bold: false,
+            },
+            Control::Label {
+                text: "Jump to (mm:ss):".into(),
+                rect: r(10, 34, 100, 14),
+                bold: false,
+            },
+            Control::Input {
+                text: fmt(current),
+                cursor: fmt(current).len(),
+                rect: r(110, 30, 160, 21),
+            },
+            Control::Button {
+                label: "Jump".into(),
+                rect: r(114, 62, 75, 23),
+                id: "ok",
+                default: true,
+            },
+            Control::Button {
+                label: "Cancel".into(),
+                rect: r(195, 62, 75, 23),
+                id: "cancel",
+                default: false,
+            },
         ];
         Dialog::new(DialogKind::JumpToTime, "Jump to time", 280, 96, c)
     }
 
     pub fn jump_to_file(titles: Vec<String>) -> Dialog {
         let c = vec![
-            Control::Label { text: "Search for:".into(), rect: r(10, 12, 80, 14), bold: false },
-            Control::Input { text: String::new(), cursor: 0, rect: r(80, 8, 330, 21) },
-            Control::List { items: vec![], values: vec![], selected: Some(0), scroll: 0, rect: r(10, 36, 400, 220) },
-            Control::Button { label: "Jump to file".into(), rect: r(174, 264, 75, 23), id: "ok", default: true },
-            Control::Button { label: "Enqueue".into(), rect: r(255, 264, 75, 23), id: "queue", default: false },
-            Control::Button { label: "Close".into(), rect: r(336, 264, 75, 23), id: "cancel", default: false },
+            Control::Label {
+                text: "Search for:".into(),
+                rect: r(10, 12, 80, 14),
+                bold: false,
+            },
+            Control::Input {
+                text: String::new(),
+                cursor: 0,
+                rect: r(80, 8, 330, 21),
+            },
+            Control::List {
+                items: vec![],
+                values: vec![],
+                selected: Some(0),
+                scroll: 0,
+                rect: r(10, 36, 400, 220),
+            },
+            Control::Button {
+                label: "Jump to file".into(),
+                rect: r(174, 264, 75, 23),
+                id: "ok",
+                default: true,
+            },
+            Control::Button {
+                label: "Enqueue".into(),
+                rect: r(255, 264, 75, 23),
+                id: "queue",
+                default: false,
+            },
+            Control::Button {
+                label: "Close".into(),
+                rect: r(336, 264, 75, 23),
+                id: "cancel",
+                default: false,
+            },
         ];
         let mut d = Dialog::new(DialogKind::JumpToFile, "Jump to file", 420, 298, c);
         d.entries = titles;
@@ -279,25 +522,65 @@ impl Dialog {
         let mut c = Vec::new();
         let mut y = 12;
         for (k, v) in fields {
-            c.push(Control::Label { text: format!("{k}:"), rect: r(10, y, 90, 14), bold: true });
-            c.push(Control::Label { text: v, rect: r(100, y, 330, 14), bold: false });
+            c.push(Control::Label {
+                text: format!("{k}:"),
+                rect: r(10, y, 90, 14),
+                bold: true,
+            });
+            c.push(Control::Label {
+                text: v,
+                rect: r(100, y, 330, 14),
+                bold: false,
+            });
             y += 18;
         }
-        c.push(Control::Button { label: "Close".into(), rect: r(355, y + 8, 75, 23), id: "ok", default: true });
+        c.push(Control::Button {
+            label: "Close".into(),
+            rect: r(355, y + 8, 75, 23),
+            id: "ok",
+            default: true,
+        });
         let h = y + 42;
         Dialog::new(DialogKind::FileInfo, "File info", 440, h, c)
     }
 
     pub fn skin_browser(skins: Vec<PathBuf>, current: Option<&PathBuf>) -> Dialog {
         let mut items = vec!["<Base Skin>".to_string()];
-        items.extend(skins.iter().map(|p| p.file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_default()));
-        let sel = current.and_then(|c| skins.iter().position(|p| p == c)).map(|i| i + 1).unwrap_or(0);
+        items.extend(skins.iter().map(|p| {
+            p.file_stem()
+                .map(|s| s.to_string_lossy().into_owned())
+                .unwrap_or_default()
+        }));
+        let sel = current
+            .and_then(|c| skins.iter().position(|p| p == c))
+            .map(|i| i + 1)
+            .unwrap_or(0);
         let values = (0..items.len()).collect();
         let c = vec![
-            Control::Label { text: "Select a skin (put .wsz files in the skins folder):".into(), rect: r(10, 10, 300, 14), bold: false },
-            Control::List { items, values, selected: Some(sel), scroll: 0, rect: r(10, 28, 300, 200) },
-            Control::Button { label: "Open folder".into(), rect: r(10, 236, 75, 23), id: "folder", default: false },
-            Control::Button { label: "Close".into(), rect: r(235, 236, 75, 23), id: "ok", default: true },
+            Control::Label {
+                text: "Select a skin (put .wsz files in the skins folder):".into(),
+                rect: r(10, 10, 300, 14),
+                bold: false,
+            },
+            Control::List {
+                items,
+                values,
+                selected: Some(sel),
+                scroll: 0,
+                rect: r(10, 28, 300, 200),
+            },
+            Control::Button {
+                label: "Open folder".into(),
+                rect: r(10, 236, 75, 23),
+                id: "folder",
+                default: false,
+            },
+            Control::Button {
+                label: "Close".into(),
+                rect: r(235, 236, 75, 23),
+                id: "ok",
+                default: true,
+            },
         ];
         let mut d = Dialog::new(DialogKind::SkinBrowser, "Skin Browser", 320, 270, c);
         d.paths = skins;
@@ -306,12 +589,38 @@ impl Dialog {
 
     pub fn preferences(p: Prefs) -> Dialog {
         let c = vec![
-            Control::Group { label: "Windows".into(), rect: r(10, 10, 300, 52) },
-            Control::Check { label: "Snap windows to each other and the screen edge".into(), checked: p.snap, rect: r(20, 28, 280, 16), id: "snap" },
-            Control::Group { label: "Playlist editor".into(), rect: r(10, 70, 300, 70) },
-            Control::Check { label: "Smooth (anti-aliased) playlist text".into(), checked: p.smooth_text, rect: r(20, 88, 280, 16), id: "smooth" },
-            Control::Check { label: "Show track numbers".into(), checked: p.show_numbers, rect: r(20, 110, 280, 16), id: "numbers" },
-            Control::Button { label: "Close".into(), rect: r(235, 150, 75, 23), id: "ok", default: true },
+            Control::Group {
+                label: "Windows".into(),
+                rect: r(10, 10, 300, 52),
+            },
+            Control::Check {
+                label: "Snap windows to each other and the screen edge".into(),
+                checked: p.snap,
+                rect: r(20, 28, 280, 16),
+                id: "snap",
+            },
+            Control::Group {
+                label: "Playlist editor".into(),
+                rect: r(10, 70, 300, 70),
+            },
+            Control::Check {
+                label: "Smooth (anti-aliased) playlist text".into(),
+                checked: p.smooth_text,
+                rect: r(20, 88, 280, 16),
+                id: "smooth",
+            },
+            Control::Check {
+                label: "Show track numbers".into(),
+                checked: p.show_numbers,
+                rect: r(20, 110, 280, 16),
+                id: "numbers",
+            },
+            Control::Button {
+                label: "Close".into(),
+                rect: r(235, 150, 75, 23),
+                id: "ok",
+                default: true,
+            },
         ];
         let mut d = Dialog::new(DialogKind::Preferences, "Preferences", 320, 184, c);
         d.prefs = p;
@@ -321,20 +630,42 @@ impl Dialog {
     fn input_text(&self) -> String {
         self.controls
             .iter()
-            .find_map(|c| if let Control::Input { text, .. } = c { Some(text.clone()) } else { None })
+            .find_map(|c| {
+                if let Control::Input { text, .. } = c {
+                    Some(text.clone())
+                } else {
+                    None
+                }
+            })
             .unwrap_or_default()
     }
 
-    fn list(&mut self) -> Option<(&mut Vec<String>, &mut Vec<usize>, &mut Option<usize>, &mut usize, Rect)> {
+    fn list(
+        &mut self,
+    ) -> Option<(
+        &mut Vec<String>,
+        &mut Vec<usize>,
+        &mut Option<usize>,
+        &mut usize,
+        Rect,
+    )> {
         self.controls.iter_mut().find_map(|c| match c {
-            Control::List { items, values, selected, scroll, rect } => Some((items, values, selected, scroll, *rect)),
+            Control::List {
+                items,
+                values,
+                selected,
+                scroll,
+                rect,
+            } => Some((items, values, selected, scroll, *rect)),
             _ => None,
         })
     }
 
     fn selected_value(&self) -> Option<usize> {
         self.controls.iter().find_map(|c| match c {
-            Control::List { values, selected, .. } => selected.and_then(|s| values.get(s).copied()),
+            Control::List {
+                values, selected, ..
+            } => selected.and_then(|s| values.get(s).copied()),
             _ => None,
         })
     }
@@ -408,13 +739,19 @@ impl Dialog {
                             items.remove(i);
                             values.pop();
                         }
-                        *sel = if items.is_empty() { None } else { Some(i.min(items.len() - 1)) };
+                        *sel = if items.is_empty() {
+                            None
+                        } else {
+                            Some(i.min(items.len() - 1))
+                        };
                     }
                     Outcome::Run(vec![Cmd::RemoveBookmark(i)])
                 }
                 None => Outcome::None,
             },
-            (DialogKind::PlaylistEntry, "ok") => Outcome::Done(vec![Cmd::PlSetLocation(self.input_text())]),
+            (DialogKind::PlaylistEntry, "ok") => {
+                Outcome::Done(vec![Cmd::PlSetLocation(self.input_text())])
+            }
             (DialogKind::SkinBrowser, "ok") => Outcome::Close,
             (DialogKind::Preferences, "ok") => Outcome::Close,
             (_, "ok") => Outcome::Close,
@@ -435,7 +772,9 @@ impl Dialog {
 
     pub fn default_button(&self) -> Option<&'static str> {
         self.controls.iter().find_map(|c| match c {
-            Control::Button { id, default: true, .. } => Some(*id),
+            Control::Button {
+                id, default: true, ..
+            } => Some(*id),
             _ => None,
         })
     }
@@ -446,7 +785,10 @@ impl Dialog {
         let mut out = Outcome::None;
         for i in 0..self.controls.len() {
             let hit = match &self.controls[i] {
-                Control::Input { rect, .. } | Control::List { rect, .. } | Control::Button { rect, .. } | Control::Check { rect, .. } => rect.contains(x, y),
+                Control::Input { rect, .. }
+                | Control::List { rect, .. }
+                | Control::Button { rect, .. }
+                | Control::Check { rect, .. } => rect.contains(x, y),
                 _ => false,
             };
             if !hit {
@@ -454,12 +796,22 @@ impl Dialog {
             }
             match &mut self.controls[i] {
                 Control::Input { .. } => self.focus = Some(i),
-                Control::List { items, selected, scroll, rect, .. } => {
+                Control::List {
+                    items,
+                    selected,
+                    scroll,
+                    rect,
+                    ..
+                } => {
                     self.focus = Some(i);
                     let row = ((y - rect.y - 2) / 16) as usize + *scroll;
                     if row < items.len() {
                         *selected = Some(row);
-                        out = if double { self.activate("ok") } else { self.list_changed() };
+                        out = if double {
+                            self.activate("ok")
+                        } else {
+                            self.list_changed()
+                        };
                     }
                 }
                 Control::Button { .. } => self.pressed = Some(i),
@@ -535,10 +887,18 @@ impl Dialog {
             }
             Key::Tab => {
                 let focusable: Vec<usize> = (0..self.controls.len())
-                    .filter(|&i| matches!(self.controls[i], Control::Input { .. } | Control::List { .. }))
+                    .filter(|&i| {
+                        matches!(
+                            self.controls[i],
+                            Control::Input { .. } | Control::List { .. }
+                        )
+                    })
                     .collect();
                 if !focusable.is_empty() {
-                    let cur = self.focus.and_then(|f| focusable.iter().position(|&x| x == f)).unwrap_or(0);
+                    let cur = self
+                        .focus
+                        .and_then(|f| focusable.iter().position(|&x| x == f))
+                        .unwrap_or(0);
                     self.focus = Some(focusable[(cur + 1) % focusable.len()]);
                 }
                 return Outcome::None;
@@ -569,7 +929,9 @@ impl Dialog {
             }
             return self.list_changed();
         }
-        let Some(f) = self.focus else { return Outcome::None };
+        let Some(f) = self.focus else {
+            return Outcome::None;
+        };
         let mut changed = false;
         if let Control::Input { text, cursor, .. } = &mut self.controls[f] {
             let chars: Vec<char> = text.chars().collect();
@@ -634,7 +996,17 @@ impl Dialog {
                     etched_frame(out, rect.x, rect.y + 6, rect.w, rect.h - 6);
                     let tw = fonts.measure(label, FONT, Weight::Regular);
                     out.fill_rect(rect.x + 7, rect.y, tw + 4, 14, FACE);
-                    fonts.draw(out, label, rect.x + 9, rect.y, FONT, Weight::Regular, TEXT, *rect, true);
+                    fonts.draw(
+                        out,
+                        label,
+                        rect.x + 9,
+                        rect.y,
+                        FONT,
+                        Weight::Regular,
+                        TEXT,
+                        *rect,
+                        true,
+                    );
                 }
                 Control::Input { text, cursor, rect } => {
                     sunken_field(out, *rect, WHITE);
@@ -643,12 +1015,28 @@ impl Dialog {
                     let before: String = text.chars().take(*cursor).collect();
                     let cx = fonts.measure(&before, FONT, Weight::Regular);
                     let shift = (cx - inner.w + 4).max(0);
-                    fonts.draw(out, text, inner.x - shift, rect.y + 4, FONT, Weight::Regular, TEXT, inner, true);
+                    fonts.draw(
+                        out,
+                        text,
+                        inner.x - shift,
+                        rect.y + 4,
+                        FONT,
+                        Weight::Regular,
+                        TEXT,
+                        inner,
+                        true,
+                    );
                     if focused {
                         out.vline(inner.x - shift + cx, rect.y + 4, 13, TEXT);
                     }
                 }
-                Control::List { items, selected, scroll, rect, .. } => {
+                Control::List {
+                    items,
+                    selected,
+                    scroll,
+                    rect,
+                    ..
+                } => {
                     sunken_field(out, *rect, WHITE);
                     let rows = ((rect.h - 4) / 16) as usize;
                     let inner = Rect::new(rect.x + 2, rect.y + 2, rect.w - 4, rect.h - 4);
@@ -660,20 +1048,60 @@ impl Dialog {
                         let y = rect.y + 2 + row as i32 * 16;
                         let sel = *selected == Some(idx);
                         if sel {
-                            out.fill_rect(inner.x, y, inner.w, 16, if focused { SELECT_BG } else { rgb(192, 192, 192) });
+                            out.fill_rect(
+                                inner.x,
+                                y,
+                                inner.w,
+                                16,
+                                if focused {
+                                    SELECT_BG
+                                } else {
+                                    rgb(192, 192, 192)
+                                },
+                            );
                         }
                         let fg = if sel && focused { WHITE } else { TEXT };
-                        fonts.draw(out, &items[idx], inner.x + 2, y + 1, FONT, Weight::Regular, fg, inner, true);
+                        fonts.draw(
+                            out,
+                            &items[idx],
+                            inner.x + 2,
+                            y + 1,
+                            FONT,
+                            Weight::Regular,
+                            fg,
+                            inner,
+                            true,
+                        );
                     }
                 }
-                Control::Button { label, rect, default, .. } => {
+                Control::Button {
+                    label,
+                    rect,
+                    default,
+                    ..
+                } => {
                     let down = self.pressed == Some(i);
                     button(out, *rect, down, *default);
                     let tw = fonts.measure(label, FONT, Weight::Regular);
                     let o = if down { 1 } else { 0 };
-                    fonts.draw(out, label, rect.x + (rect.w - tw) / 2 + o, rect.y + 5 + o, FONT, Weight::Regular, TEXT, *rect, true);
+                    fonts.draw(
+                        out,
+                        label,
+                        rect.x + (rect.w - tw) / 2 + o,
+                        rect.y + 5 + o,
+                        FONT,
+                        Weight::Regular,
+                        TEXT,
+                        *rect,
+                        true,
+                    );
                 }
-                Control::Check { label, checked, rect, .. } => {
+                Control::Check {
+                    label,
+                    checked,
+                    rect,
+                    ..
+                } => {
                     let b = Rect::new(rect.x, rect.y + 1, 13, 13);
                     sunken_field(out, b, WHITE);
                     if *checked {
@@ -681,7 +1109,17 @@ impl Dialog {
                             out.vline(b.x + 3 + dx, b.y + 3 + dy, 3, TEXT);
                         }
                     }
-                    fonts.draw(out, label, rect.x + 18, rect.y + 1, FONT, Weight::Regular, TEXT, *rect, true);
+                    fonts.draw(
+                        out,
+                        label,
+                        rect.x + 18,
+                        rect.y + 1,
+                        FONT,
+                        Weight::Regular,
+                        TEXT,
+                        *rect,
+                        true,
+                    );
                 }
             }
         }
@@ -717,7 +1155,11 @@ pub fn parse_time(s: &str) -> Option<f64> {
         }
         total = total * 60.0 + v;
     }
-    if parts.is_empty() || parts.len() > 3 { None } else { Some(total) }
+    if parts.is_empty() || parts.len() > 3 {
+        None
+    } else {
+        Some(total)
+    }
 }
 
 fn sunken_field(out: &mut Bitmap, r: Rect, fill: u32) {
@@ -771,21 +1213,37 @@ mod tests {
 
     #[test]
     fn jump_to_file_filters_and_jumps() {
-        let mut d = Dialog::jump_to_file(vec!["Alpha - One".into(), "Beta - Two".into(), "Alpha - Three".into()]);
+        let mut d = Dialog::jump_to_file(vec![
+            "Alpha - One".into(),
+            "Beta - Two".into(),
+            "Alpha - Three".into(),
+        ]);
         for c in "alpha th".chars() {
             d.key(&Key::Char(c), Mods::default(), None);
         }
         assert_eq!(d.selected_value(), Some(2));
-        assert_eq!(d.key(&Key::Enter, Mods::default(), None), Outcome::Done(vec![Cmd::PlayIndex(2)]));
+        assert_eq!(
+            d.key(&Key::Enter, Mods::default(), None),
+            Outcome::Done(vec![Cmd::PlayIndex(2)])
+        );
     }
 
     #[test]
     fn open_url_returns_drop() {
         let mut d = Dialog::open_url(false);
         d.key(&Key::Char('x'), Mods::default(), None);
-        d.key(&Key::Char('v'), Mods { ctrl: true, ..Default::default() }, Some("http://a/b".into()));
+        d.key(
+            &Key::Char('v'),
+            Mods {
+                ctrl: true,
+                ..Default::default()
+            },
+            Some("http://a/b".into()),
+        );
         match d.key(&Key::Enter, Mods::default(), None) {
-            Outcome::Done(cmds) => assert_eq!(cmds, vec![Cmd::OpenLocation("xhttp://a/b".into(), true)]),
+            Outcome::Done(cmds) => {
+                assert_eq!(cmds, vec![Cmd::OpenLocation("xhttp://a/b".into(), true)])
+            }
             o => panic!("{o:?}"),
         }
     }

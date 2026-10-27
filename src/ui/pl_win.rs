@@ -33,28 +33,80 @@ impl PopMenu {
             PopMenu::Add => &[
                 (sp::PLAYLIST_ADD_URL, sp::PLAYLIST_ADD_URL_SELECTED, AddUrl),
                 (sp::PLAYLIST_ADD_DIR, sp::PLAYLIST_ADD_DIR_SELECTED, AddDir),
-                (sp::PLAYLIST_ADD_FILE, sp::PLAYLIST_ADD_FILE_SELECTED, AddFile),
+                (
+                    sp::PLAYLIST_ADD_FILE,
+                    sp::PLAYLIST_ADD_FILE_SELECTED,
+                    AddFile,
+                ),
             ],
             PopMenu::Remove => &[
-                (sp::PLAYLIST_REMOVE_MISC, sp::PLAYLIST_REMOVE_MISC_SELECTED, RemoveMisc),
-                (sp::PLAYLIST_REMOVE_ALL, sp::PLAYLIST_REMOVE_ALL_SELECTED, RemoveAll),
+                (
+                    sp::PLAYLIST_REMOVE_MISC,
+                    sp::PLAYLIST_REMOVE_MISC_SELECTED,
+                    RemoveMisc,
+                ),
+                (
+                    sp::PLAYLIST_REMOVE_ALL,
+                    sp::PLAYLIST_REMOVE_ALL_SELECTED,
+                    RemoveAll,
+                ),
                 (sp::PLAYLIST_CROP, sp::PLAYLIST_CROP_SELECTED, Crop),
-                (sp::PLAYLIST_REMOVE_SELECTED, sp::PLAYLIST_REMOVE_SELECTED_SELECTED, RemoveSelected),
+                (
+                    sp::PLAYLIST_REMOVE_SELECTED,
+                    sp::PLAYLIST_REMOVE_SELECTED_SELECTED,
+                    RemoveSelected,
+                ),
             ],
             PopMenu::Select => &[
-                (sp::PLAYLIST_INVERT_SELECTION, sp::PLAYLIST_INVERT_SELECTION_SELECTED, Invert),
-                (sp::PLAYLIST_SELECT_ZERO, sp::PLAYLIST_SELECT_ZERO_SELECTED, SelectNone),
-                (sp::PLAYLIST_SELECT_ALL, sp::PLAYLIST_SELECT_ALL_SELECTED, SelectAll),
+                (
+                    sp::PLAYLIST_INVERT_SELECTION,
+                    sp::PLAYLIST_INVERT_SELECTION_SELECTED,
+                    Invert,
+                ),
+                (
+                    sp::PLAYLIST_SELECT_ZERO,
+                    sp::PLAYLIST_SELECT_ZERO_SELECTED,
+                    SelectNone,
+                ),
+                (
+                    sp::PLAYLIST_SELECT_ALL,
+                    sp::PLAYLIST_SELECT_ALL_SELECTED,
+                    SelectAll,
+                ),
             ],
             PopMenu::Misc => &[
-                (sp::PLAYLIST_SORT_LIST, sp::PLAYLIST_SORT_LIST_SELECTED, Sort),
-                (sp::PLAYLIST_FILE_INFO, sp::PLAYLIST_FILE_INFO_SELECTED, FileInfo),
-                (sp::PLAYLIST_MISC_OPTIONS, sp::PLAYLIST_MISC_OPTIONS_SELECTED, MiscOptions),
+                (
+                    sp::PLAYLIST_SORT_LIST,
+                    sp::PLAYLIST_SORT_LIST_SELECTED,
+                    Sort,
+                ),
+                (
+                    sp::PLAYLIST_FILE_INFO,
+                    sp::PLAYLIST_FILE_INFO_SELECTED,
+                    FileInfo,
+                ),
+                (
+                    sp::PLAYLIST_MISC_OPTIONS,
+                    sp::PLAYLIST_MISC_OPTIONS_SELECTED,
+                    MiscOptions,
+                ),
             ],
             PopMenu::List => &[
-                (sp::PLAYLIST_NEW_LIST, sp::PLAYLIST_NEW_LIST_SELECTED, NewList),
-                (sp::PLAYLIST_SAVE_LIST, sp::PLAYLIST_SAVE_LIST_SELECTED, SaveList),
-                (sp::PLAYLIST_LOAD_LIST, sp::PLAYLIST_LOAD_LIST_SELECTED, LoadList),
+                (
+                    sp::PLAYLIST_NEW_LIST,
+                    sp::PLAYLIST_NEW_LIST_SELECTED,
+                    NewList,
+                ),
+                (
+                    sp::PLAYLIST_SAVE_LIST,
+                    sp::PLAYLIST_SAVE_LIST_SELECTED,
+                    SaveList,
+                ),
+                (
+                    sp::PLAYLIST_LOAD_LIST,
+                    sp::PLAYLIST_LOAD_LIST_SELECTED,
+                    LoadList,
+                ),
             ],
         }
     }
@@ -205,7 +257,11 @@ impl PlWin {
         if list.contains(x, y) {
             let row = (y - LIST_TOP - LIST_PAD_TOP).div_euclid(ROW_H);
             let idx = st.playlist.scroll as i32 + row;
-            if row >= 0 && (row as usize) < g.visible_rows() && (idx as usize) < st.playlist.len() && y >= LIST_TOP + LIST_PAD_TOP {
+            if row >= 0
+                && (row as usize) < g.visible_rows()
+                && (idx as usize) < st.playlist.len()
+                && y >= LIST_TOP + LIST_PAD_TOP
+            {
                 return Widget::Row(idx as usize);
             }
             return Widget::ListBlank;
@@ -213,7 +269,13 @@ impl PlWin {
         if r(g.w - 20, LIST_TOP, 20, g.h - LIST_TOP - 38).contains(x, y) {
             return Widget::Scrollbar;
         }
-        for m in [PopMenu::Add, PopMenu::Remove, PopMenu::Select, PopMenu::Misc, PopMenu::List] {
+        for m in [
+            PopMenu::Add,
+            PopMenu::Remove,
+            PopMenu::Select,
+            PopMenu::Misc,
+            PopMenu::List,
+        ] {
             if g.menu_button(m).contains(x, y) {
                 return Widget::MenuButton(m);
             }
@@ -279,9 +341,19 @@ impl PlWin {
 
         // Top bar: left corner, tiles, centred title, tiles, right corner.
         let (tl, tile, title, tr) = if selected {
-            (sp::PLAYLIST_TOP_LEFT_SELECTED, sp::PLAYLIST_TOP_TILE_SELECTED, sp::PLAYLIST_TITLE_BAR_SELECTED, sp::PLAYLIST_TOP_RIGHT_CORNER_SELECTED)
+            (
+                sp::PLAYLIST_TOP_LEFT_SELECTED,
+                sp::PLAYLIST_TOP_TILE_SELECTED,
+                sp::PLAYLIST_TITLE_BAR_SELECTED,
+                sp::PLAYLIST_TOP_RIGHT_CORNER_SELECTED,
+            )
         } else {
-            (sp::PLAYLIST_TOP_LEFT_CORNER, sp::PLAYLIST_TOP_TILE, sp::PLAYLIST_TITLE_BAR, sp::PLAYLIST_TOP_RIGHT_CORNER)
+            (
+                sp::PLAYLIST_TOP_LEFT_CORNER,
+                sp::PLAYLIST_TOP_TILE,
+                sp::PLAYLIST_TITLE_BAR,
+                sp::PLAYLIST_TOP_RIGHT_CORNER,
+            )
         };
         let spacers = st.pl_size.0 % 2 == 0;
         let fill_w = (g.w - 150 - if spacers { 25 } else { 0 }) / 2;
@@ -334,9 +406,17 @@ impl PlWin {
         // Scrollbar handle.
         let track = g.scroll_track();
         let max_scroll = st.playlist.len().saturating_sub(g.visible_rows());
-        let frac = if max_scroll == 0 { 0.0 } else { st.playlist.scroll as f64 / max_scroll as f64 };
+        let frac = if max_scroll == 0 {
+            0.0
+        } else {
+            st.playlist.scroll as f64 / max_scroll as f64
+        };
         let hy = track.y + ((track.h - 18) as f64 * frac).floor() as i32;
-        let handle = if self.pressed == Some(Widget::Scrollbar) { sp::PLAYLIST_SCROLL_HANDLE_SELECTED } else { sp::PLAYLIST_SCROLL_HANDLE };
+        let handle = if self.pressed == Some(Widget::Scrollbar) {
+            sp::PLAYLIST_SCROLL_HANDLE_SELECTED
+        } else {
+            sp::PLAYLIST_SCROLL_HANDLE
+        };
         skin.draw(out, handle, track.x, hy);
 
         // Track list.
@@ -352,8 +432,16 @@ impl PlWin {
             format_long_time(tot),
             if tot_ok { "" } else { "+" }
         );
-        draw_text_clipped(st, out, &format!("{text:<18}"), g.w - 150 + 7, by + 10, Rect::new(g.w - 150 + 7, by + 10, 90, 6));
-        let blink = st.status() != crate::audio::Status::Paused || (st.started.elapsed().as_millis() / 1000) % 2 == 0;
+        draw_text_clipped(
+            st,
+            out,
+            &format!("{text:<18}"),
+            g.w - 150 + 7,
+            by + 10,
+            Rect::new(g.w - 150 + 7, by + 10, 90, 6),
+        );
+        let blink = st.status() != crate::audio::Status::Paused
+            || (st.started.elapsed().as_millis() / 1000).is_multiple_of(2);
         draw_mini_time(st, out, g.w - 150 + 66, by + 23, blink);
 
         // Open pop-up menu.
@@ -395,18 +483,42 @@ impl PlWin {
             if e.selected {
                 out.fill_rect(list.x, y, list.w, ROW_H, style.selected_bg);
             }
-            let color = if Some(idx) == st.playlist.current { style.current } else { style.normal };
+            let color = if Some(idx) == st.playlist.current {
+                style.current
+            } else {
+                style.normal
+            };
             let ty = y;
             let dur_x = list.x + list.w - 3;
             let title_clip_w = list.w - dur_w - 8;
             let num = format!("{:>width$}. ", idx + 1, width = digits).replace(' ', "\u{2007}");
             let label = format!("{num}{}", e.title);
             let label = fonts.ellipsize(&label, FONT_PX, Weight::Regular, title_clip_w.max(10));
-            fonts.draw(out, &label, list.x + 2, ty, FONT_PX, Weight::Regular, color, Rect::new(list.x, y, title_clip_w + 2, ROW_H), true);
+            fonts.draw(
+                out,
+                &label,
+                list.x + 2,
+                ty,
+                FONT_PX,
+                Weight::Regular,
+                color,
+                Rect::new(list.x, y, title_clip_w + 2, ROW_H),
+                true,
+            );
             if let Some(d) = e.duration {
                 let t = format_time(d);
                 let tw = fonts.measure(&t, FONT_PX, Weight::Regular);
-                fonts.draw(out, &t, dur_x - tw, ty, FONT_PX, Weight::Regular, color, Rect::new(list.x, y, list.w, ROW_H), true);
+                fonts.draw(
+                    out,
+                    &t,
+                    dur_x - tw,
+                    ty,
+                    FONT_PX,
+                    Weight::Regular,
+                    color,
+                    Rect::new(list.x, y, list.w, ROW_H),
+                    true,
+                );
             }
         }
     }
@@ -423,7 +535,11 @@ impl PlWin {
         skin.draw(out, sp::PLAYLIST_SHADE_BACKGROUND_LEFT, 0, 0);
         skin.draw(
             out,
-            if selected { sp::PLAYLIST_SHADE_BACKGROUND_RIGHT_SELECTED } else { sp::PLAYLIST_SHADE_BACKGROUND_RIGHT },
+            if selected {
+                sp::PLAYLIST_SHADE_BACKGROUND_RIGHT_SELECTED
+            } else {
+                sp::PLAYLIST_SHADE_BACKGROUND_RIGHT
+            },
             g.w - 50,
             0,
         );
@@ -450,28 +566,56 @@ impl PlWin {
         };
         draw_text_clipped(st, out, &name, 5, 4, Rect::new(5, 4, g.w - 70, 6));
         let tw = time.chars().count() as i32 * 5;
-        draw_text_clipped(st, out, &time, g.w - 30 - tw, 4, Rect::new(g.w - 30 - tw, 4, tw, 6));
+        draw_text_clipped(
+            st,
+            out,
+            &time,
+            g.w - 30 - tw,
+            4,
+            Rect::new(g.w - 30 - tw, 4, tw, 6),
+        );
     }
 
     pub fn mouse(&mut self, st: &mut State, ev: MouseEvent) -> Vec<WmRequest> {
         let mut wm = Vec::new();
         let g = Geometry::of(st);
         match ev {
-            MouseEvent::Down { x, y, button: Button::Right, .. } => {
+            MouseEvent::Down {
+                x,
+                y,
+                button: Button::Right,
+                ..
+            } => {
                 self.open_menu = None;
                 match self.hit(st, x, y) {
                     Widget::Row(i) => {
                         if !st.playlist.entries[i].selected {
                             st.playlist.click(i);
                         }
-                        st.push(Cmd::ShowMenu(MenuId::PlaylistContext, x, y, WinKind::Playlist));
+                        st.push(Cmd::ShowMenu(
+                            MenuId::PlaylistContext,
+                            x,
+                            y,
+                            WinKind::Playlist,
+                        ));
                     }
-                    Widget::ListBlank => st.push(Cmd::ShowMenu(MenuId::PlaylistContext, x, y, WinKind::Playlist)),
+                    Widget::ListBlank => st.push(Cmd::ShowMenu(
+                        MenuId::PlaylistContext,
+                        x,
+                        y,
+                        WinKind::Playlist,
+                    )),
                     _ => st.push(Cmd::ShowMenu(MenuId::Main, x, y, WinKind::Playlist)),
                 }
                 st.dirty = true;
             }
-            MouseEvent::Down { x, y, button: Button::Left, double, mods } => {
+            MouseEvent::Down {
+                x,
+                y,
+                button: Button::Left,
+                double,
+                mods,
+            } => {
                 let w = self.hit(st, x, y);
                 // A click outside an open menu closes it.
                 if let Some(m) = self.open_menu {
@@ -538,10 +682,18 @@ impl PlWin {
                     Widget::Scrollbar => {
                         let track = g.scroll_track();
                         let max_scroll = st.playlist.len().saturating_sub(g.visible_rows());
-                        let frac = if max_scroll == 0 { 0.0 } else { st.playlist.scroll as f64 / max_scroll as f64 };
+                        let frac = if max_scroll == 0 {
+                            0.0
+                        } else {
+                            st.playlist.scroll as f64 / max_scroll as f64
+                        };
                         let hy = ((track.h - 18) as f64 * frac).floor() as i32;
                         let rel = y - track.y;
-                        self.scroll_grab = if rel >= hy && rel < hy + 18 { rel - hy } else { 9 };
+                        self.scroll_grab = if rel >= hy && rel < hy + 18 {
+                            rel - hy
+                        } else {
+                            9
+                        };
                         self.drag_scroll(st, y);
                     }
                     Widget::MenuButton(m) => {
@@ -575,7 +727,8 @@ impl PlWin {
                         if let Some((y0, moved)) = self.drag_rows {
                             let want = (y - y0).div_euclid(ROW_H);
                             if want != moved {
-                                let applied = st.playlist.move_selected((want - moved) as isize) as i32;
+                                let applied =
+                                    st.playlist.move_selected((want - moved) as isize) as i32;
                                 self.drag_rows = Some((y0, moved + applied));
                                 st.dirty = true;
                             }
@@ -585,8 +738,14 @@ impl PlWin {
                     _ => {}
                 }
             }
-            MouseEvent::Up { x, y, button: Button::Left } => {
-                let Some(p) = self.pressed.take() else { return wm };
+            MouseEvent::Up {
+                x,
+                y,
+                button: Button::Left,
+            } => {
+                let Some(p) = self.pressed.take() else {
+                    return wm;
+                };
                 self.drag_rows = None;
                 let now = self.hit(st, x, y);
                 let inside = now == p;
@@ -639,7 +798,9 @@ impl PlWin {
             PopItem::SelectAll => Cmd::PlSelectAll,
             PopItem::Sort => Cmd::ShowMenu(MenuId::PlaylistSort, x, y, WinKind::Playlist),
             PopItem::FileInfo => Cmd::FileInfo,
-            PopItem::MiscOptions => Cmd::ShowMenu(MenuId::PlaylistMiscOptions, x, y, WinKind::Playlist),
+            PopItem::MiscOptions => {
+                Cmd::ShowMenu(MenuId::PlaylistMiscOptions, x, y, WinKind::Playlist)
+            }
             PopItem::NewList => Cmd::PlNew,
             PopItem::SaveList => Cmd::PlSave,
             PopItem::LoadList => Cmd::PlLoad,
@@ -667,7 +828,9 @@ impl PlWin {
 
     /// Row index under a window y coordinate (for drops), clamped to the list.
     pub fn row_at(&self, st: &State, y: i32) -> usize {
-        let row = ((y - LIST_TOP - LIST_PAD_TOP) as f64 / ROW_H as f64).round().max(0.0) as usize;
+        let row = ((y - LIST_TOP - LIST_PAD_TOP) as f64 / ROW_H as f64)
+            .round()
+            .max(0.0) as usize;
         (st.playlist.scroll + row).min(st.playlist.len())
     }
 }
@@ -675,10 +838,21 @@ impl PlWin {
 /// Running times switch to h:mm:ss from one hour on.
 pub fn format_long_time(secs: f64) -> String {
     let s = secs.max(0.0).floor() as u64;
-    if s >= 3600 { format!("{}:{:02}:{:02}", s / 3600, (s / 60) % 60, s % 60) } else { format_time(secs) }
+    if s >= 3600 {
+        format!("{}:{:02}:{:02}", s / 3600, (s / 60) % 60, s % 60)
+    } else {
+        format_time(secs)
+    }
 }
 
-fn tile_right_aligned(skin: &crate::skin::Skin, out: &mut Bitmap, tile: Sprite, x: i32, w: i32, y: i32) {
+fn tile_right_aligned(
+    skin: &crate::skin::Skin,
+    out: &mut Bitmap,
+    tile: Sprite,
+    x: i32,
+    w: i32,
+    y: i32,
+) {
     if w <= 0 {
         return;
     }

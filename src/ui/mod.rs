@@ -38,10 +38,25 @@ pub struct Mods {
 /// Mouse input in window (skin pixel) coordinates.
 #[derive(Clone, Copy, Debug)]
 pub enum MouseEvent {
-    Down { x: i32, y: i32, button: Button, double: bool, mods: Mods },
-    Move { x: i32, y: i32 },
-    Up { x: i32, y: i32, button: Button },
-    Wheel { delta: i32 },
+    Down {
+        x: i32,
+        y: i32,
+        button: Button,
+        double: bool,
+        mods: Mods,
+    },
+    Move {
+        x: i32,
+        y: i32,
+    },
+    Up {
+        x: i32,
+        y: i32,
+        button: Button,
+    },
+    Wheel {
+        delta: i32,
+    },
 }
 
 /// Which pop-up menu to show.
@@ -185,7 +200,11 @@ pub fn balance_text(b: i8) -> String {
     if b == 0 {
         "Balance: Center".into()
     } else {
-        format!("Balance: {}% {}", b.unsigned_abs(), if b < 0 { "Left" } else { "Right" })
+        format!(
+            "Balance: {}% {}",
+            b.unsigned_abs(),
+            if b < 0 { "Left" } else { "Right" }
+        )
     }
 }
 
@@ -199,7 +218,11 @@ pub fn eq_text(band: Option<usize>, value: u8) -> String {
         None => "PREAMP".to_string(),
         Some(i) => {
             let hz = crate::audio::dsp::EQ_FREQS[i];
-            if hz < 1000.0 { format!("{}HZ", hz as u32) } else { format!("{}KHZ", hz as u32 / 1000) }
+            if hz < 1000.0 {
+                format!("{}HZ", hz as u32)
+            } else {
+                format!("{}KHZ", hz as u32 / 1000)
+            }
         }
     };
     let rounded = (db * 10.0).round() / 10.0;

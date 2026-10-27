@@ -77,7 +77,11 @@ impl EqWin {
                 return Widget::Band(i);
             }
         }
-        if y < 14 { Widget::TitleBar } else { Widget::Body }
+        if y < 14 {
+            Widget::TitleBar
+        } else {
+            Widget::Body
+        }
     }
 
     pub fn cursor(&self, st: &State, x: i32, y: i32) -> CursorKind {
@@ -97,7 +101,16 @@ impl EqWin {
         let skin = &st.skin;
         let selected = st.focused == Some(WinKind::Eq);
         if st.eqw.shade {
-            skin.draw(out, if selected { sp::EQ_SHADE_BACKGROUND_SELECTED } else { sp::EQ_SHADE_BACKGROUND }, 0, 0);
+            skin.draw(
+                out,
+                if selected {
+                    sp::EQ_SHADE_BACKGROUND_SELECTED
+                } else {
+                    sp::EQ_SHADE_BACKGROUND
+                },
+                0,
+                0,
+            );
             // Volume and balance thumbs (left/centre/right variants).
             let vx = (st.volume as f64 / 100.0 * 94.0).round() as i32;
             let vs = if st.volume <= 33 {
@@ -126,7 +139,16 @@ impl EqWin {
             return;
         }
         skin.draw(out, sp::EQ_WINDOW_BACKGROUND, 0, 0);
-        skin.draw(out, if selected { sp::EQ_TITLE_BAR_SELECTED } else { sp::EQ_TITLE_BAR }, 0, 0);
+        skin.draw(
+            out,
+            if selected {
+                sp::EQ_TITLE_BAR_SELECTED
+            } else {
+                sp::EQ_TITLE_BAR
+            },
+            0,
+            0,
+        );
         if self.pressed_here(Widget::Shade) {
             if st.skin.has_own(crate::skin::sprites::Sheet::EqEx) || st.skin.path.is_none() {
                 skin.draw(out, sp::EQ_MAXIMIZE_BUTTON_ACTIVE, 254, 3);
@@ -151,7 +173,16 @@ impl EqWin {
             (true, true) => sp::EQ_AUTO_BUTTON_SELECTED_DEPRESSED,
         };
         skin.draw(out, auto, 40, 18);
-        skin.draw(out, if self.pressed_here(Widget::Presets) { sp::EQ_PRESETS_BUTTON_SELECTED } else { sp::EQ_PRESETS_BUTTON }, 217, 18);
+        skin.draw(
+            out,
+            if self.pressed_here(Widget::Presets) {
+                sp::EQ_PRESETS_BUTTON_SELECTED
+            } else {
+                sp::EQ_PRESETS_BUTTON
+            },
+            217,
+            18,
+        );
 
         // Graph.
         skin.draw(out, sp::EQ_GRAPH_BACKGROUND, 86, 17);
@@ -162,24 +193,58 @@ impl EqWin {
             let level = (63 - value.min(63)) as f64 / 63.0;
             let n = (level * 27.0).round() as i32;
             let (fx, fy) = (n % 14, n / 14);
-            skin.draw_part(out, sp::EQ_SLIDER_BACKGROUND, fx * 15, fy * 65, 14, 63, x, SLIDER_Y);
+            skin.draw_part(
+                out,
+                sp::EQ_SLIDER_BACKGROUND,
+                fx * 15,
+                fy * 65,
+                14,
+                63,
+                x,
+                SLIDER_Y,
+            );
             let ty = (value.min(63) as f64 / 63.0 * THUMB_TRAVEL as f64).round() as i32;
-            skin.draw(out, if active { sp::EQ_SLIDER_THUMB_SELECTED } else { sp::EQ_SLIDER_THUMB }, x + 1, SLIDER_Y + ty);
+            skin.draw(
+                out,
+                if active {
+                    sp::EQ_SLIDER_THUMB_SELECTED
+                } else {
+                    sp::EQ_SLIDER_THUMB
+                },
+                x + 1,
+                SLIDER_Y + ty,
+            );
         };
         band(out, 21, st.eq.preamp, self.pressed == Some(Widget::Preamp));
         for (i, bx) in BAND_X.iter().enumerate() {
-            band(out, *bx, st.eq.bands[i], self.pressed == Some(Widget::Band(i)));
+            band(
+                out,
+                *bx,
+                st.eq.bands[i],
+                self.pressed == Some(Widget::Band(i)),
+            );
         }
     }
 
     pub fn mouse(&mut self, st: &mut State, ev: MouseEvent) -> Vec<WmRequest> {
         let mut wm = Vec::new();
         match ev {
-            MouseEvent::Down { x, y, button: Button::Right, .. } => {
+            MouseEvent::Down {
+                x,
+                y,
+                button: Button::Right,
+                ..
+            } => {
                 let _ = (x, y);
                 st.push(Cmd::ShowMenu(MenuId::Main, x, y, WinKind::Eq));
             }
-            MouseEvent::Down { x, y, button: Button::Left, double, .. } => {
+            MouseEvent::Down {
+                x,
+                y,
+                button: Button::Left,
+                double,
+                ..
+            } => {
                 let w = self.hit(st, x, y);
                 if double && w == Widget::TitleBar {
                     st.push(Cmd::ToggleShade(WinKind::Eq));
@@ -195,7 +260,9 @@ impl EqWin {
                 self.pressed = Some(w);
                 self.hover_inside = true;
                 match w {
-                    Widget::Presets => st.push(Cmd::ShowMenu(MenuId::EqPresets, 217, 30, WinKind::Eq)),
+                    Widget::Presets => {
+                        st.push(Cmd::ShowMenu(MenuId::EqPresets, 217, 30, WinKind::Eq))
+                    }
                     Widget::Preamp => {
                         let cur = slider_y(st.eq.preamp);
                         self.grab = grab(y - SLIDER_Y, cur);
@@ -250,13 +317,22 @@ impl EqWin {
                     _ => {}
                 }
             }
-            MouseEvent::Up { x, y, button: Button::Left } => {
-                let Some(p) = self.pressed.take() else { return wm };
+            MouseEvent::Up {
+                x,
+                y,
+                button: Button::Left,
+            } => {
+                let Some(p) = self.pressed.take() else {
+                    return wm;
+                };
                 self.sweep = false;
                 let inside = self.hit(st, x, y) == p;
                 st.dirty = true;
                 match p {
-                    Widget::Preamp | Widget::Band(_) | Widget::ShadeVolume | Widget::ShadeBalance => st.focus = None,
+                    Widget::Preamp
+                    | Widget::Band(_)
+                    | Widget::ShadeVolume
+                    | Widget::ShadeBalance => st.focus = None,
                     _ if !inside => {}
                     Widget::Shade => st.push(Cmd::ToggleShade(WinKind::Eq)),
                     Widget::Close => st.push(Cmd::CloseWindow(WinKind::Eq)),
@@ -307,7 +383,11 @@ fn slider_y(v: u8) -> i32 {
 }
 
 fn grab(rel_y: i32, thumb_y: i32) -> i32 {
-    if rel_y >= thumb_y && rel_y < thumb_y + 11 { rel_y - thumb_y } else { 5 }
+    if rel_y >= thumb_y && rel_y < thumb_y + 11 {
+        rel_y - thumb_y
+    } else {
+        5
+    }
 }
 
 /// The curve through the ten band values, coloured from eqmain.bmp's colour strip.
@@ -321,8 +401,16 @@ pub fn draw_graph(st: &State, out: &mut Bitmap, gx: i32, gy: i32) {
     // The curve: a Catmull-Rom interpolation of the band levels (rows, 0.75
     // row per dB around the middle row), sampled per pixel and joined with
     // line segments. Parameters fitted to the original's output.
-    let rows: Vec<f64> = st.eq.bands.iter().map(|&v| 9.0 - 0.75 * crate::audio::dsp::slider_to_db(v)).collect();
-    let ys: Vec<i32> = (0..109).map(|x| (catmull_rom(&rows, x as f64 - 0.5, 0.4) + 1e-6).floor() as i32).map(|y| y.clamp(0, 18)).collect();
+    let rows: Vec<f64> = st
+        .eq
+        .bands
+        .iter()
+        .map(|&v| 9.0 - 0.75 * crate::audio::dsp::slider_to_db(v))
+        .collect();
+    let ys: Vec<i32> = (0..109)
+        .map(|x| (catmull_rom(&rows, x as f64 - 0.5, 0.4) + 1e-6).floor() as i32)
+        .map(|y| y.clamp(0, 18))
+        .collect();
     let mut plot = |x: i32, y: i32| {
         let c = skin.sprite_pixel(sp::EQ_GRAPH_LINE_COLORS, 0, y);
         // Skins whose eqmain.bmp lacks the colour strip draw no curve.
@@ -355,7 +443,10 @@ pub fn catmull_rom(ys: &[f64], x: f64, tension: f64) -> f64 {
     let m1 = tension * (p2 - p0);
     let m2 = tension * (p3 - p1);
     let (t2, t3) = (t * t, t * t * t);
-    (2.0 * t3 - 3.0 * t2 + 1.0) * p1 + (t3 - 2.0 * t2 + t) * m1 + (-2.0 * t3 + 3.0 * t2) * p2 + (t3 - t2) * m2
+    (2.0 * t3 - 3.0 * t2 + 1.0) * p1
+        + (t3 - 2.0 * t2 + t) * m1
+        + (-2.0 * t3 + 3.0 * t2) * p2
+        + (t3 - t2) * m2
 }
 
 #[cfg(test)]

@@ -159,7 +159,8 @@ impl Skin {
 
     /// Numbers come from nums_ex.bmp when the skin itself ships that file.
     pub fn uses_nums_ex(&self) -> bool {
-        self.has_own(Sheet::NumsEx) || (!self.has_own(Sheet::Numbers) && self.sheet(Sheet::NumsEx).is_some())
+        self.has_own(Sheet::NumsEx)
+            || (!self.has_own(Sheet::Numbers) && self.sheet(Sheet::NumsEx).is_some())
     }
 
     pub fn draw(&self, dst: &mut Bitmap, sp: Sprite, x: i32, y: i32) {
@@ -170,15 +171,35 @@ impl Skin {
 
     /// Draw part of a sprite: `ox`,`oy` offset within the sprite.
     #[allow(clippy::too_many_arguments)]
-    pub fn draw_part(&self, dst: &mut Bitmap, sp: Sprite, ox: i32, oy: i32, w: i32, h: i32, x: i32, y: i32) {
+    pub fn draw_part(
+        &self,
+        dst: &mut Bitmap,
+        sp: Sprite,
+        ox: i32,
+        oy: i32,
+        w: i32,
+        h: i32,
+        x: i32,
+        y: i32,
+    ) {
         if let Some(src) = self.sheet(sp.sheet) {
-            dst.blit(src, sp.x + ox, sp.y + oy, w.min(sp.w - ox), h.min(sp.h - oy), x, y);
+            dst.blit(
+                src,
+                sp.x + ox,
+                sp.y + oy,
+                w.min(sp.w - ox),
+                h.min(sp.h - oy),
+                x,
+                y,
+            );
         }
     }
 
     /// Pixel inside a sprite (used for 1px colour strips such as the EQ graph colours).
     pub fn sprite_pixel(&self, sp: Sprite, x: i32, y: i32) -> u32 {
-        self.sheet(sp.sheet).map(|b| b.get(sp.x + x, sp.y + y)).unwrap_or(0)
+        self.sheet(sp.sheet)
+            .map(|b| b.get(sp.x + x, sp.y + y))
+            .unwrap_or(0)
     }
 
     pub fn builtin() -> Skin {
@@ -211,7 +232,10 @@ impl Skin {
             .text("pledit", "txt")
             .map(|t| parse_pledit(&t))
             .unwrap_or_default();
-        let regions = files.text("region", "txt").map(|t| parse_regions(&t)).unwrap_or_default();
+        let regions = files
+            .text("region", "txt")
+            .map(|t| parse_regions(&t))
+            .unwrap_or_default();
         let mut cursors = HashMap::new();
         for kind in CursorKind::ALL {
             if let Some(bytes) = files.bytes(kind.file_stem(), "cur")
@@ -220,7 +244,15 @@ impl Skin {
                 cursors.insert(kind, c);
             }
         }
-        Ok(Skin { path: Some(path.to_path_buf()), sheets, own, viscolors, playlist, regions, cursors })
+        Ok(Skin {
+            path: Some(path.to_path_buf()),
+            sheets,
+            own,
+            viscolors,
+            playlist,
+            regions,
+            cursors,
+        })
     }
 
     pub(crate) fn from_parts(sheets: Vec<Option<Bitmap>>, viscolors: [u32; 24]) -> Skin {
@@ -250,7 +282,8 @@ impl SkinFiles {
             collect_dir(path, &mut entries, 0);
         } else {
             let file = std::fs::File::open(path).map_err(|e| format!("{}: {e}", path.display()))?;
-            let mut zip = zip::ZipArchive::new(file).map_err(|e| format!("{}: {e}", path.display()))?;
+            let mut zip =
+                zip::ZipArchive::new(file).map_err(|e| format!("{}: {e}", path.display()))?;
             let mut total: u64 = 0;
             for i in 0..zip.len().min(MAX_ENTRIES) {
                 let Ok(f) = zip.by_index(i) else { continue };
@@ -259,7 +292,11 @@ impl SkinFiles {
                 }
                 let Ok(name) = f.name() else { continue };
                 let name = name.replace('\\', "/");
-                let base = name.rsplit('/').next().unwrap_or(&name).to_ascii_lowercase();
+                let base = name
+                    .rsplit('/')
+                    .next()
+                    .unwrap_or(&name)
+                    .to_ascii_lowercase();
                 if !is_skin_file(&base) || f.size() > MAX_FILE_BYTES {
                     continue;
                 }
@@ -306,7 +343,9 @@ const MAX_TOTAL_BYTES: u64 = 64 * 1024 * 1024;
 
 /// Only files a classic skin can contain are read.
 fn is_skin_file(base: &str) -> bool {
-    let Some((stem, ext)) = base.rsplit_once('.') else { return false };
+    let Some((stem, ext)) = base.rsplit_once('.') else {
+        return false;
+    };
     match ext {
         "bmp" | "png" => Sheet::ALL.iter().any(|s| s.file_stem() == stem),
         "txt" => matches!(stem, "viscolor" | "pledit" | "region"),
@@ -316,7 +355,9 @@ fn is_skin_file(base: &str) -> bool {
 }
 
 fn collect_dir(dir: &Path, out: &mut HashMap<String, Vec<u8>>, depth: u32) {
-    let Ok(rd) = std::fs::read_dir(dir) else { return };
+    let Ok(rd) = std::fs::read_dir(dir) else {
+        return;
+    };
     let mut paths: Vec<_> = rd.flatten().map(|e| e.path()).collect();
     paths.sort();
     for p in paths {
@@ -326,7 +367,9 @@ fn collect_dir(dir: &Path, out: &mut HashMap<String, Vec<u8>>, depth: u32) {
             }
         } else if let Some(n) = p.file_name() {
             let base = n.to_string_lossy().to_ascii_lowercase();
-            let small = std::fs::metadata(&p).map(|m| m.len() <= MAX_FILE_BYTES).unwrap_or(false);
+            let small = std::fs::metadata(&p)
+                .map(|m| m.len() <= MAX_FILE_BYTES)
+                .unwrap_or(false);
             if is_skin_file(&base)
                 && small
                 && let Ok(b) = std::fs::read(&p)
@@ -348,8 +391,9 @@ pub fn decode_text(b: &[u8]) -> String {
 
 fn cp1252(c: u8) -> char {
     const HIGH: [char; 32] = [
-        '€', '\u{81}', '‚', 'ƒ', '„', '…', '†', '‡', 'ˆ', '‰', 'Š', '‹', 'Œ', '\u{8d}', 'Ž', '\u{8f}', '\u{90}', '‘',
-        '’', '“', '”', '•', '–', '—', '˜', '™', 'š', '›', 'œ', '\u{9d}', 'ž', 'Ÿ',
+        '€', '\u{81}', '‚', 'ƒ', '„', '…', '†', '‡', 'ˆ', '‰', 'Š', '‹', 'Œ', '\u{8d}', 'Ž',
+        '\u{8f}', '\u{90}', '‘', '’', '“', '”', '•', '–', '—', '˜', '™', 'š', '›', 'œ', '\u{9d}',
+        'ž', 'Ÿ',
     ];
     match c {
         0x80..=0x9F => HIGH[(c - 0x80) as usize],
@@ -365,7 +409,9 @@ pub fn decode_image(bytes: &[u8]) -> Option<Bitmap> {
     } else {
         return None;
     };
-    let img = image::load_from_memory_with_format(bytes, fmt).ok()?.to_rgba8();
+    let img = image::load_from_memory_with_format(bytes, fmt)
+        .ok()?
+        .to_rgba8();
     let mut b = Bitmap::from_rgba8(img.width(), img.height(), img.as_raw());
     // Skin bitmaps are opaque; some 32-bit BMPs carry a zero alpha channel.
     for p in &mut b.px {
@@ -388,7 +434,11 @@ pub fn parse_viscolors(text: &str, fallback: &[u32; 24]) -> [u32; 24] {
             .filter_map(|s| s.parse().ok())
             .collect();
         if nums.len() == 3 {
-            out[i] = rgb(nums[0].min(255) as u8, nums[1].min(255) as u8, nums[2].min(255) as u8);
+            out[i] = rgb(
+                nums[0].min(255) as u8,
+                nums[1].min(255) as u8,
+                nums[2].min(255) as u8,
+            );
             i += 1;
         }
     }
@@ -421,7 +471,11 @@ pub fn parse_ini(text: &str) -> HashMap<String, HashMap<String, String>> {
 
 pub fn parse_color(s: &str) -> Option<u32> {
     let s = s.trim().trim_start_matches('#');
-    let hex: String = s.chars().take_while(|c| c.is_ascii_hexdigit()).take(6).collect();
+    let hex: String = s
+        .chars()
+        .take_while(|c| c.is_ascii_hexdigit())
+        .take(6)
+        .collect();
     if hex.len() < 6 {
         return None;
     }
@@ -453,17 +507,27 @@ pub fn parse_pledit(text: &str) -> PlaylistStyle {
 pub fn parse_regions(text: &str) -> Regions {
     let ini = parse_ini(text);
     let get = |name: &str| -> Vec<Polygon> {
-        let Some(sec) = ini.get(name) else { return vec![] };
+        let Some(sec) = ini.get(name) else {
+            return vec![];
+        };
         let (Some(np), Some(pl)) = (sec.get("numpoints"), sec.get("pointlist")) else {
             return vec![];
         };
-        let counts: Vec<usize> = np.split(',').filter_map(|s| s.trim().parse().ok()).collect();
+        let counts: Vec<usize> = np
+            .split(',')
+            .filter_map(|s| s.trim().parse().ok())
+            .collect();
         let nums: Vec<i32> = pl
             .split(|c: char| c == ',' || c.is_whitespace())
             .filter(|s| !s.is_empty())
             .filter_map(|s| s.trim().parse().ok())
             .collect();
-        let points: Vec<(i32, i32)> = nums.chunks_exact(2).map(|c| (c[0], c[1])).collect();
+        let points: Vec<(i32, i32)> = nums
+            .as_chunks::<2>()
+            .0
+            .iter()
+            .map(|c| (c[0], c[1]))
+            .collect();
         let mut idx = 0;
         let mut polys = Vec::new();
         for n in counts {
@@ -502,7 +566,7 @@ pub fn region_mask(polys: &[Polygon], w: i32, h: i32) -> Vec<bool> {
                 }
             }
             xs.sort_by(|a, b| a.partial_cmp(b).unwrap());
-            for pair in xs.chunks_exact(2) {
+            for pair in xs.as_chunks::<2>().0 {
                 let start = (pair[0] - 0.5).ceil().max(0.0) as i32;
                 let end = ((pair[1] - 0.5).ceil() as i32).min(w);
                 for x in start..end {
@@ -533,8 +597,14 @@ pub fn parse_cursor(bytes: &[u8]) -> Option<CursorImage> {
     ico[11] = 0;
     ico[12] = 0;
     ico[13] = 0;
-    let img = image::load_from_memory_with_format(&ico, image::ImageFormat::Ico).ok()?.to_rgba8();
-    Some(CursorImage { image: Bitmap::from_rgba8(img.width(), img.height(), img.as_raw()), hot_x, hot_y })
+    let img = image::load_from_memory_with_format(&ico, image::ImageFormat::Ico)
+        .ok()?
+        .to_rgba8();
+    Some(CursorImage {
+        image: Bitmap::from_rgba8(img.width(), img.height(), img.as_raw()),
+        hot_x,
+        hot_y,
+    })
 }
 
 fn parse_ani_first_frame(bytes: &[u8]) -> Option<CursorImage> {

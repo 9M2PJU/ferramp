@@ -118,9 +118,15 @@ impl MainWin {
 
     pub fn hit(&self, st: &State, x: i32, y: i32) -> Widget {
         let found = if st.main.shade {
-            layout_shade().iter().find(|(_, r)| r.contains(x, y)).map(|(w, _)| *w)
+            layout_shade()
+                .iter()
+                .find(|(_, r)| r.contains(x, y))
+                .map(|(w, _)| *w)
         } else {
-            layout_normal().iter().find(|(_, r)| r.contains(x, y)).map(|(w, _)| *w)
+            layout_normal()
+                .iter()
+                .find(|(_, r)| r.contains(x, y))
+                .map(|(w, _)| *w)
         };
         match found {
             Some(w) => w,
@@ -130,7 +136,11 @@ impl MainWin {
     }
 
     pub fn cursor(&self, st: &State, x: i32, y: i32) -> CursorKind {
-        let w = if let Some(p) = self.pressed { p } else { self.hit(st, x, y) };
+        let w = if let Some(p) = self.pressed {
+            p
+        } else {
+            self.hit(st, x, y)
+        };
         match (st.main.shade, w) {
             (false, Widget::Options) => CursorKind::MainMenu,
             (true, Widget::Options) => CursorKind::MMenu,
@@ -193,7 +203,7 @@ impl MainWin {
             return true;
         }
         let since = self.paused_at.map(|t| t.elapsed().as_millis()).unwrap_or(0);
-        (since / 1000) % 2 == 0
+        (since / 1000).is_multiple_of(2)
     }
 
     fn title_buttons(&self, st: &State, out: &mut Bitmap, shade: bool) {
@@ -209,8 +219,22 @@ impl MainWin {
                 skin.draw(out, normal, x, 3);
             }
         };
-        draw(out, 0, Widget::Options, sp::MAIN_OPTIONS_BUTTON, sp::MAIN_OPTIONS_BUTTON_DEPRESSED, 6);
-        draw(out, 1, Widget::Minimize, sp::MAIN_MINIMIZE_BUTTON, sp::MAIN_MINIMIZE_BUTTON_DEPRESSED, 244);
+        draw(
+            out,
+            0,
+            Widget::Options,
+            sp::MAIN_OPTIONS_BUTTON,
+            sp::MAIN_OPTIONS_BUTTON_DEPRESSED,
+            6,
+        );
+        draw(
+            out,
+            1,
+            Widget::Minimize,
+            sp::MAIN_MINIMIZE_BUTTON,
+            sp::MAIN_MINIMIZE_BUTTON_DEPRESSED,
+            244,
+        );
         if shade {
             if self.pressed_here(Widget::Shade) {
                 skin.draw(out, sp::MAIN_SHADE_BUTTON_SELECTED_DEPRESSED, 254, 3);
@@ -218,9 +242,23 @@ impl MainWin {
                 skin.draw(out, sp::MAIN_SHADE_BUTTON_SELECTED, 254, 3);
             }
         } else {
-            draw(out, 2, Widget::Shade, sp::MAIN_SHADE_BUTTON, sp::MAIN_SHADE_BUTTON_DEPRESSED, 254);
+            draw(
+                out,
+                2,
+                Widget::Shade,
+                sp::MAIN_SHADE_BUTTON,
+                sp::MAIN_SHADE_BUTTON_DEPRESSED,
+                254,
+            );
         }
-        draw(out, 3, Widget::Close, sp::MAIN_CLOSE_BUTTON, sp::MAIN_CLOSE_BUTTON_DEPRESSED, 264);
+        draw(
+            out,
+            3,
+            Widget::Close,
+            sp::MAIN_CLOSE_BUTTON,
+            sp::MAIN_CLOSE_BUTTON_DEPRESSED,
+            264,
+        );
     }
 
     fn render_normal(&mut self, st: &mut State, out: &mut Bitmap) {
@@ -282,13 +320,35 @@ impl MainWin {
         // Time.
         if status != Status::Stopped && self.blink_visible(st) {
             let remaining = st.time_remaining && st.duration().is_some();
-            let secs = if remaining { st.duration().unwrap_or(0.0) - st.position() } else { st.position() };
+            let secs = if remaining {
+                st.duration().unwrap_or(0.0) - st.position()
+            } else {
+                st.position()
+            };
             let d = time_digits(secs);
             let ex = skin.uses_nums_ex();
             if ex {
-                skin.draw(out, if remaining { sp::MINUS_SIGN_EX } else { sp::NO_MINUS_SIGN_EX }, 38, 26);
+                skin.draw(
+                    out,
+                    if remaining {
+                        sp::MINUS_SIGN_EX
+                    } else {
+                        sp::NO_MINUS_SIGN_EX
+                    },
+                    38,
+                    26,
+                );
             } else {
-                skin.draw(out, if remaining { sp::MINUS_SIGN } else { sp::NO_MINUS_SIGN }, 38, 32);
+                skin.draw(
+                    out,
+                    if remaining {
+                        sp::MINUS_SIGN
+                    } else {
+                        sp::NO_MINUS_SIGN
+                    },
+                    38,
+                    32,
+                );
             }
             for (i, x) in [48, 60, 78, 90].iter().enumerate() {
                 skin.draw(out, sp::digit(d[i] as i32, ex), *x, 26);
@@ -301,8 +361,19 @@ impl MainWin {
         let off = st.marquee_offset(&text);
         draw_text_clipped(st, out, &looped, 111 - off, 27, Rect::new(111, 27, 154, 6));
         if status != Status::Stopped {
-            let kbps = format!("{:>3}", st.engine.shared.kbps.load(std::sync::atomic::Ordering::Relaxed).min(999));
-            let kbps = if kbps.trim() == "0" && st.now.kbps > 0 { format!("{:>3}", st.now.kbps.min(999)) } else { kbps };
+            let kbps = format!(
+                "{:>3}",
+                st.engine
+                    .shared
+                    .kbps
+                    .load(std::sync::atomic::Ordering::Relaxed)
+                    .min(999)
+            );
+            let kbps = if kbps.trim() == "0" && st.now.kbps > 0 {
+                format!("{:>3}", st.now.kbps.min(999))
+            } else {
+                kbps
+            };
             draw_text_clipped(st, out, &kbps, 111, 43, Rect::new(111, 43, 15, 6));
             let khz = format!("{:>2}", st.now.khz.min(99));
             draw_text_clipped(st, out, &khz, 156, 43, Rect::new(156, 43, 10, 6));
@@ -312,8 +383,26 @@ impl MainWin {
             Status::Stopped => (false, false),
             _ => (st.now.channels == 1, st.now.channels >= 2),
         };
-        skin.draw(out, if mono { sp::MAIN_MONO_SELECTED } else { sp::MAIN_MONO }, 212, 41);
-        skin.draw(out, if stereo { sp::MAIN_STEREO_SELECTED } else { sp::MAIN_STEREO }, 239, 41);
+        skin.draw(
+            out,
+            if mono {
+                sp::MAIN_MONO_SELECTED
+            } else {
+                sp::MAIN_MONO
+            },
+            212,
+            41,
+        );
+        skin.draw(
+            out,
+            if stereo {
+                sp::MAIN_STEREO_SELECTED
+            } else {
+                sp::MAIN_STEREO
+            },
+            239,
+            41,
+        );
 
         // Volume.
         let vi = volume_frame(st.volume);
@@ -321,7 +410,11 @@ impl MainWin {
         let vx = volume_thumb_x(st.volume);
         skin.draw(
             out,
-            if self.pressed == Some(Widget::Volume) { sp::MAIN_VOLUME_THUMB_SELECTED } else { sp::MAIN_VOLUME_THUMB },
+            if self.pressed == Some(Widget::Volume) {
+                sp::MAIN_VOLUME_THUMB_SELECTED
+            } else {
+                sp::MAIN_VOLUME_THUMB
+            },
             107 + vx,
             58,
         );
@@ -330,7 +423,16 @@ impl MainWin {
         let (bg, thumb, thumb_on) = balance_sprites(st);
         let bi = balance_frame(st.balance);
         skin.draw_part(out, bg, 0, bi * 15, 38, 13, 177, 57);
-        skin.draw(out, if self.pressed == Some(Widget::Balance) { thumb_on } else { thumb }, 177 + balance_thumb_x(st.balance), 58);
+        skin.draw(
+            out,
+            if self.pressed == Some(Widget::Balance) {
+                thumb_on
+            } else {
+                thumb
+            },
+            177 + balance_thumb_x(st.balance),
+            58,
+        );
 
         // EQ / PL toggles.
         let eq_on = st.eqw.visible;
@@ -366,15 +468,56 @@ impl MainWin {
 
         // Transport buttons.
         let buttons = [
-            (Widget::Prev, sp::MAIN_PREVIOUS_BUTTON, sp::MAIN_PREVIOUS_BUTTON_ACTIVE, 16, 88),
-            (Widget::Play, sp::MAIN_PLAY_BUTTON, sp::MAIN_PLAY_BUTTON_ACTIVE, 39, 88),
-            (Widget::Pause, sp::MAIN_PAUSE_BUTTON, sp::MAIN_PAUSE_BUTTON_ACTIVE, 62, 88),
-            (Widget::Stop, sp::MAIN_STOP_BUTTON, sp::MAIN_STOP_BUTTON_ACTIVE, 85, 88),
-            (Widget::Next, sp::MAIN_NEXT_BUTTON, sp::MAIN_NEXT_BUTTON_ACTIVE, 108, 88),
-            (Widget::Eject, sp::MAIN_EJECT_BUTTON, sp::MAIN_EJECT_BUTTON_ACTIVE, 136, 89),
+            (
+                Widget::Prev,
+                sp::MAIN_PREVIOUS_BUTTON,
+                sp::MAIN_PREVIOUS_BUTTON_ACTIVE,
+                16,
+                88,
+            ),
+            (
+                Widget::Play,
+                sp::MAIN_PLAY_BUTTON,
+                sp::MAIN_PLAY_BUTTON_ACTIVE,
+                39,
+                88,
+            ),
+            (
+                Widget::Pause,
+                sp::MAIN_PAUSE_BUTTON,
+                sp::MAIN_PAUSE_BUTTON_ACTIVE,
+                62,
+                88,
+            ),
+            (
+                Widget::Stop,
+                sp::MAIN_STOP_BUTTON,
+                sp::MAIN_STOP_BUTTON_ACTIVE,
+                85,
+                88,
+            ),
+            (
+                Widget::Next,
+                sp::MAIN_NEXT_BUTTON,
+                sp::MAIN_NEXT_BUTTON_ACTIVE,
+                108,
+                88,
+            ),
+            (
+                Widget::Eject,
+                sp::MAIN_EJECT_BUTTON,
+                sp::MAIN_EJECT_BUTTON_ACTIVE,
+                136,
+                89,
+            ),
         ];
         for (w, normal, active, x, y) in buttons {
-            skin.draw(out, if self.pressed_here(w) { active } else { normal }, x, y);
+            skin.draw(
+                out,
+                if self.pressed_here(w) { active } else { normal },
+                x,
+                y,
+            );
         }
         let shuffle = match (st.shuffle, self.pressed_here(Widget::Shuffle)) {
             (false, false) => sp::MAIN_SHUFFLE_BUTTON,
@@ -398,7 +541,16 @@ impl MainWin {
     fn render_shade(&mut self, st: &mut State, out: &mut Bitmap) {
         let status = st.status();
         let selected = st.focused == Some(WinKind::Main);
-        st.skin.draw(out, if selected { sp::MAIN_SHADE_BACKGROUND_SELECTED } else { sp::MAIN_SHADE_BACKGROUND }, 0, 0);
+        st.skin.draw(
+            out,
+            if selected {
+                sp::MAIN_SHADE_BACKGROUND_SELECTED
+            } else {
+                sp::MAIN_SHADE_BACKGROUND
+            },
+            0,
+            0,
+        );
         self.title_buttons(st, out, true);
         // Mini time.
         draw_mini_time(st, out, 127, 4, self.blink_visible(st));
@@ -415,7 +567,12 @@ impl MainWin {
             } else {
                 sp::MAIN_SHADE_POSITION_THUMB
             };
-            skin.draw(out, thumb, 226 + (frac * SHADE_POSITION_TRAVEL as f64).round() as i32, 4);
+            skin.draw(
+                out,
+                thumb,
+                226 + (frac * SHADE_POSITION_TRAVEL as f64).round() as i32,
+                4,
+            );
         }
         draw_vis(st, out, 79, 5, true);
     }
@@ -437,7 +594,12 @@ impl MainWin {
     pub fn mouse(&mut self, st: &mut State, ev: MouseEvent) -> Vec<WmRequest> {
         let mut wm = Vec::new();
         match ev {
-            MouseEvent::Down { x, y, button: Button::Right, .. } => {
+            MouseEvent::Down {
+                x,
+                y,
+                button: Button::Right,
+                ..
+            } => {
                 let w = self.hit(st, x, y);
                 let menu = match w {
                     Widget::Vis | Widget::ClutterV => MenuId::Vis,
@@ -447,7 +609,13 @@ impl MainWin {
                 };
                 st.push(Cmd::ShowMenu(menu, x, y, WinKind::Main));
             }
-            MouseEvent::Down { x, y, button: Button::Left, double, .. } => {
+            MouseEvent::Down {
+                x,
+                y,
+                button: Button::Left,
+                double,
+                ..
+            } => {
                 let w = self.hit(st, x, y);
                 if double && matches!(w, Widget::TitleBar) {
                     st.push(Cmd::ToggleShade(WinKind::Main));
@@ -509,10 +677,14 @@ impl MainWin {
                     }
                     Widget::Position => {
                         if st.duration().is_some() && st.status() != Status::Stopped {
-                            let (x0, travel, tw) =
-                                if st.main.shade { (226, SHADE_POSITION_TRAVEL, 3) } else { (16, POSITION_TRAVEL, 29) };
+                            let (x0, travel, tw) = if st.main.shade {
+                                (226, SHADE_POSITION_TRAVEL, 3)
+                            } else {
+                                (16, POSITION_TRAVEL, 29)
+                            };
                             let cur = self.position_fraction(st).unwrap_or(0.0);
-                            self.grab = slider_grab(x - x0, (cur * travel as f64).round() as i32, tw);
+                            self.grab =
+                                slider_grab(x - x0, (cur * travel as f64).round() as i32, tw);
                             self.drag_position(st, x);
                         } else {
                             self.pressed = None;
@@ -541,8 +713,14 @@ impl MainWin {
                     }
                 }
             }
-            MouseEvent::Up { x, y, button: Button::Left } => {
-                let Some(p) = self.pressed.take() else { return wm };
+            MouseEvent::Up {
+                x,
+                y,
+                button: Button::Left,
+            } => {
+                let Some(p) = self.pressed.take() else {
+                    return wm;
+                };
                 let inside = self.hit(st, x, y) == p;
                 st.dirty = true;
                 match p {
@@ -634,7 +812,11 @@ impl MainWin {
 
     fn drag_position(&mut self, st: &mut State, x: i32) {
         let Some(d) = st.duration() else { return };
-        let (x0, travel) = if st.main.shade { (226, SHADE_POSITION_TRAVEL) } else { (16, POSITION_TRAVEL) };
+        let (x0, travel) = if st.main.shade {
+            (226, SHADE_POSITION_TRAVEL)
+        } else {
+            (16, POSITION_TRAVEL)
+        };
         let pos = (x - x0 - self.grab).clamp(0, travel);
         let t = pos as f64 / travel as f64 * d;
         st.focus = Some(Focus::Position(t));
@@ -642,7 +824,8 @@ impl MainWin {
     }
 
     pub fn wants_animation(&self, st: &State) -> bool {
-        st.status() != Status::Stopped || st.marquee_text().chars().count() >= crate::state::MARQUEE_CHARS
+        st.status() != Status::Stopped
+            || st.marquee_text().chars().count() >= crate::state::MARQUEE_CHARS
     }
 }
 
@@ -650,7 +833,15 @@ impl MainWin {
 fn vis_dots(out: &mut Bitmap, colors: &[u32; 24], x0: i32, y0: i32, w: i32, h: i32) {
     for y in y0..y0 + h {
         for x in x0..x0 + w {
-            out.set(x, y, if x % 2 == 0 && y % 2 == 0 { colors[1] } else { colors[0] });
+            out.set(
+                x,
+                y,
+                if x % 2 == 0 && y % 2 == 0 {
+                    colors[1]
+                } else {
+                    colors[0]
+                },
+            );
         }
     }
 }
@@ -658,7 +849,11 @@ fn vis_dots(out: &mut Bitmap, colors: &[u32; 24], x0: i32, y0: i32, w: i32, h: i
 /// Where inside a slider thumb the mouse grabbed it: the existing offset when
 /// the click lands on the thumb, otherwise centre the thumb on the click.
 fn slider_grab(rel_x: i32, thumb_x: i32, thumb_w: i32) -> i32 {
-    if rel_x >= thumb_x && rel_x < thumb_x + thumb_w { rel_x - thumb_x } else { thumb_w / 2 }
+    if rel_x >= thumb_x && rel_x < thumb_x + thumb_w {
+        rel_x - thumb_x
+    } else {
+        thumb_w / 2
+    }
 }
 
 pub fn volume_thumb_x(v: u8) -> i32 {
@@ -680,21 +875,34 @@ pub fn balance_frame(b: i8) -> i32 {
 fn balance_sprites(st: &State) -> (Sprite, Sprite, Sprite) {
     if !st.skin.has_own(Sheet::Balance) && st.skin.has_own(Sheet::Volume) {
         (
-            Sprite { sheet: Sheet::Volume, x: 0, y: 0, w: 38, h: 420 },
+            Sprite {
+                sheet: Sheet::Volume,
+                x: 0,
+                y: 0,
+                w: 38,
+                h: 420,
+            },
             sp::MAIN_VOLUME_THUMB,
             sp::MAIN_VOLUME_THUMB_SELECTED,
         )
     } else {
-        (sp::MAIN_BALANCE_BACKGROUND, sp::MAIN_BALANCE_THUMB, sp::MAIN_BALANCE_THUMB_ACTIVE)
+        (
+            sp::MAIN_BALANCE_BACKGROUND,
+            sp::MAIN_BALANCE_THUMB,
+            sp::MAIN_BALANCE_THUMB_ACTIVE,
+        )
     }
 }
 
 /// Text in the skin font, clipped to `clip`.
 pub fn draw_text_clipped(st: &State, out: &mut Bitmap, text: &str, x: i32, y: i32, clip: Rect) {
-    let Some(font) = st.skin.sheet(Sheet::Text) else { return };
+    let Some(font) = st.skin.sheet(Sheet::Text) else {
+        return;
+    };
     let mut cx = x;
     for c in text.chars() {
-        if cx + 5 > clip.x && cx < clip.x + clip.w
+        if cx + 5 > clip.x
+            && cx < clip.x + clip.w
             && let Some(s) = sp::text_char(c)
         {
             out.blit_clipped(font, s.x, s.y, s.w, s.h, cx, y, clip);
@@ -713,11 +921,28 @@ pub fn draw_mini_time(st: &State, out: &mut Bitmap, x: i32, y: i32, visible: boo
         return;
     }
     let remaining = st.time_remaining && st.duration().is_some();
-    let secs = if remaining { st.duration().unwrap_or(0.0) - st.position() } else { st.position() };
+    let secs = if remaining {
+        st.duration().unwrap_or(0.0) - st.position()
+    } else {
+        st.position()
+    };
     let d = time_digits(secs);
-    let chars = [if remaining { '-' } else { ' ' }, digit_char(d[0]), digit_char(d[1]), digit_char(d[2]), digit_char(d[3])];
+    let chars = [
+        if remaining { '-' } else { ' ' },
+        digit_char(d[0]),
+        digit_char(d[1]),
+        digit_char(d[2]),
+        digit_char(d[3]),
+    ];
     for (cx, ch) in cells.iter().zip(chars) {
-        draw_text_clipped(st, out, &ch.to_string(), x + cx, y, Rect::new(x + cx, y, 5, 6));
+        draw_text_clipped(
+            st,
+            out,
+            &ch.to_string(),
+            x + cx,
+            y,
+            Rect::new(x + cx, y, 5, 6),
+        );
     }
 }
 
@@ -737,7 +962,8 @@ pub fn draw_vis(st: &mut State, out: &mut Bitmap, x: i32, y: i32, small: bool) {
         VisMode::Analyzer => st.vis.draw_analyzer(out, x, y, small, &colors, &opts),
         VisMode::Oscilloscope => {
             let samples = std::mem::take(&mut st.vis_samples);
-            st.vis.draw_oscilloscope(out, &samples, x, y, small, &colors, &opts);
+            st.vis
+                .draw_oscilloscope(out, &samples, x, y, small, &colors, &opts);
             st.vis_samples = samples;
         }
         VisMode::Off => {}

@@ -67,17 +67,29 @@ impl OsWin {
         let window = Rc::new(window);
         let ctx = softbuffer::Context::new(window.clone()).ok()?;
         let surface = softbuffer::Surface::new(&ctx, window.clone()).ok()?;
-        Some(OsWin { window, surface, frame: Bitmap::new(1, 1, 0), cursor: (0.0, 0.0), cursor_kind: None })
+        Some(OsWin {
+            window,
+            surface,
+            frame: Bitmap::new(1, 1, 0),
+            cursor: (0.0, 0.0),
+            cursor_kind: None,
+        })
     }
 
     fn present(&mut self, scale: i32) {
-        let (w, h) = ((self.frame.w * scale).max(1) as u32, (self.frame.h * scale).max(1) as u32);
-        let (Some(nw), Some(nh)) = (NonZeroU32::new(w), NonZeroU32::new(h)) else { return };
+        let (w, h) = (
+            (self.frame.w * scale).max(1) as u32,
+            (self.frame.h * scale).max(1) as u32,
+        );
+        let (Some(nw), Some(nh)) = (NonZeroU32::new(w), NonZeroU32::new(h)) else {
+            return;
+        };
         if self.surface.resize(nw, nh).is_err() {
             return;
         }
         if let Ok(mut buf) = self.surface.buffer_mut() {
-            self.frame.present_into(&mut buf, w as usize, h as usize, scale as usize);
+            self.frame
+                .present_into(&mut buf, w as usize, h as usize, scale as usize);
             let _ = buf.present();
         }
     }
@@ -103,8 +115,14 @@ struct DialogWin {
 }
 
 enum Drag {
-    Move { start_cursor: (i32, i32), windows: Vec<(WinKind, i32, i32)> },
-    Resize { start_cursor: (i32, i32), start_size: (i32, i32) },
+    Move {
+        start_cursor: (i32, i32),
+        windows: Vec<(WinKind, i32, i32)>,
+    },
+    Resize {
+        start_cursor: (i32, i32),
+        start_size: (i32, i32),
+    },
 }
 
 pub struct App {
@@ -179,8 +197,15 @@ impl App {
             hover_y: HashMap::new(),
             errors_in_row: 0,
             last_save: Instant::now(),
-            prefs: Prefs { snap: true, smooth_text: false, show_numbers: true },
-            eqf_presets: BUILTIN_PRESETS.iter().map(|(n, p, b)| (n.to_string(), *p, *b)).collect(),
+            prefs: Prefs {
+                snap: true,
+                smooth_text: false,
+                show_numbers: true,
+            },
+            eqf_presets: BUILTIN_PRESETS
+                .iter()
+                .map(|(n, p, b)| (n.to_string(), *p, *b))
+                .collect(),
             eq_auto_presets: Vec::new(),
             bookmarks: Vec::new(),
             last_vis_mode: VisMode::Analyzer,
@@ -198,12 +223,17 @@ impl App {
 
     fn load_libraries(&mut self) {
         let dir = config::config_dir();
-        if let Some(p) = std::fs::read(dir.join("ferramp.q1")).ok().and_then(|b| config::parse_eqf(&b))
+        if let Some(p) = std::fs::read(dir.join("ferramp.q1"))
+            .ok()
+            .and_then(|b| config::parse_eqf(&b))
             && !p.is_empty()
         {
             self.eqf_presets = p;
         }
-        if let Some(p) = std::fs::read(dir.join("ferramp.q2")).ok().and_then(|b| config::parse_eqf(&b)) {
+        if let Some(p) = std::fs::read(dir.join("ferramp.q2"))
+            .ok()
+            .and_then(|b| config::parse_eqf(&b))
+        {
             self.eq_auto_presets = p;
         }
         self.bookmarks = playlist::load_playlist_file(&dir.join("bookmarks.m3u"))
@@ -221,11 +251,21 @@ impl App {
     fn save_libraries(&self) {
         let dir = config::config_dir();
         let _ = std::fs::create_dir_all(&dir);
-        let _ = std::fs::write(dir.join("ferramp.q1"), config::write_eqf_library(&self.eqf_presets));
-        let _ = std::fs::write(dir.join("ferramp.q2"), config::write_eqf_library(&self.eq_auto_presets));
+        let _ = std::fs::write(
+            dir.join("ferramp.q1"),
+            config::write_eqf_library(&self.eqf_presets),
+        );
+        let _ = std::fs::write(
+            dir.join("ferramp.q2"),
+            config::write_eqf_library(&self.eq_auto_presets),
+        );
         let mut m3u = String::from("#EXTM3U\n");
         for (t, l) in &self.bookmarks {
-            m3u.push_str(&format!("#EXTINF:-1,{}\n{}\n", playlist::clean_title(t), playlist::clean_title(l)));
+            m3u.push_str(&format!(
+                "#EXTINF:-1,{}\n{}\n",
+                playlist::clean_title(t),
+                playlist::clean_title(l)
+            ));
         }
         let _ = std::fs::write(dir.join("bookmarks.m3u"), m3u);
     }
@@ -257,7 +297,8 @@ impl App {
                 self.open_dialog(el, Dialog::eq_presets(op, names));
             }
             LoadAuto | SaveAuto | DeleteAuto => {
-                let mut names: Vec<String> = self.eq_auto_presets.iter().map(|p| p.0.clone()).collect();
+                let mut names: Vec<String> =
+                    self.eq_auto_presets.iter().map(|p| p.0.clone()).collect();
                 if op == SaveAuto
                     && let Some(k) = self.current_file_key()
                     && !names.contains(&k)
@@ -344,7 +385,10 @@ impl App {
         st.main.visible = true;
         st.eqw = geom("eq", st.eqw);
         st.pl = geom("pl", st.pl);
-        st.pl_size = (s.get_i32("pl_w", 0).clamp(0, 100), s.get_i32("pl_h", 0).clamp(0, 100));
+        st.pl_size = (
+            s.get_i32("pl_w", 0).clamp(0, 100),
+            s.get_i32("pl_h", 0).clamp(0, 100),
+        );
         st.playlist.scroll = 0;
         self.prefs.snap = s.get_bool("snap", true);
         self.prefs.smooth_text = s.get_bool("smooth_text", false);
@@ -389,7 +433,14 @@ impl App {
         }
         s.set("pl_w", st.pl_size.0);
         s.set("pl_h", st.pl_size.1);
-        s.set("skin", st.skin.path.as_ref().map(|p| p.to_string_lossy().into_owned()).unwrap_or_default());
+        s.set(
+            "skin",
+            st.skin
+                .path
+                .as_ref()
+                .map(|p| p.to_string_lossy().into_owned())
+                .unwrap_or_default(),
+        );
         s.set("current", st.playlist.current.unwrap_or(0));
         s.set_bool("snap", self.prefs.snap);
         s.set_bool("smooth_text", self.prefs.smooth_text);
@@ -416,7 +467,10 @@ impl App {
     fn create_windows(&mut self, el: &ActiveEventLoop) {
         if let Ok(v) = std::env::var("FERRAMP_SCALE") {
             self.ui_scale = v.parse().unwrap_or(1).clamp(1, 4);
-        } else if let Some(m) = el.primary_monitor().or_else(|| el.available_monitors().next()) {
+        } else if let Some(m) = el
+            .primary_monitor()
+            .or_else(|| el.available_monitors().next())
+        {
             self.ui_scale = (m.scale_factor().round() as i32).clamp(1, 4);
         }
         // Skin: built-in first, then the saved one.
@@ -461,7 +515,9 @@ impl App {
                 if let Ok(h) = main.window.window_handle()
                     && let RawWindowHandle::Win32(h) = h.as_raw()
                 {
-                    attrs = attrs.with_owner_window(h.hwnd.get()).with_skip_taskbar(true);
+                    attrs = attrs
+                        .with_owner_window(h.hwnd.get())
+                        .with_skip_taskbar(true);
                 }
             }
             let Ok(window) = el.create_window(attrs) else {
@@ -521,13 +577,24 @@ impl App {
     fn ensure_on_screen(&mut self, el: &ActiveEventLoop) {
         let mons: Vec<(i32, i32, i32, i32)> = el
             .available_monitors()
-            .map(|m| (m.position().x, m.position().y, m.size().width as i32, m.size().height as i32))
+            .map(|m| {
+                (
+                    m.position().x,
+                    m.position().y,
+                    m.size().width as i32,
+                    m.size().height as i32,
+                )
+            })
             .collect();
         if mons.is_empty() {
             return;
         }
         let (mx, my, _, _) = mons[0];
-        let ok = |x: i32, y: i32| mons.iter().any(|(ax, ay, aw, ah)| x + 20 > *ax && x < ax + aw - 20 && y + 10 > *ay && y < ay + ah - 10);
+        let ok = |x: i32, y: i32| {
+            mons.iter().any(|(ax, ay, aw, ah)| {
+                x + 20 > *ax && x < ax + aw - 20 && y + 10 > *ay && y < ay + ah - 10
+            })
+        };
         let main = self.st.main;
         if !ok(main.x, main.y) {
             let dx = mx + 100 - main.x;
@@ -544,7 +611,9 @@ impl App {
         self.cursors.clear();
         for (kind, c) in &self.st.skin.cursors {
             let rgba = c.image.to_rgba8();
-            if let Ok(src) = CustomCursor::from_rgba(rgba, c.image.w as u16, c.image.h as u16, c.hot_x, c.hot_y) {
+            if let Ok(src) =
+                CustomCursor::from_rgba(rgba, c.image.w as u16, c.image.h as u16, c.hot_x, c.hot_y)
+            {
                 self.cursors.insert(*kind, el.create_custom_cursor(src));
             }
         }
@@ -554,7 +623,11 @@ impl App {
     }
 
     fn apply_window_level(&self) {
-        let level = if self.st.always_on_top { WindowLevel::AlwaysOnTop } else { WindowLevel::Normal };
+        let level = if self.st.always_on_top {
+            WindowLevel::AlwaysOnTop
+        } else {
+            WindowLevel::Normal
+        };
         for w in self.wins.values() {
             w.window.set_window_level(level);
         }
@@ -589,7 +662,9 @@ impl App {
             if let Some(win) = self.wins.get(&k) {
                 let cur = win.window.inner_size();
                 if cur.width != w as u32 || cur.height != h as u32 {
-                    let _ = win.window.request_inner_size(PhysicalSize::new(w as u32, h as u32));
+                    let _ = win
+                        .window
+                        .request_inner_size(PhysicalSize::new(w as u32, h as u32));
                 }
             }
             self.apply_shape(k);
@@ -625,7 +700,10 @@ impl App {
     }
 
     fn visible_kinds(&self) -> Vec<WinKind> {
-        WinKind::ALL.into_iter().filter(|k| self.st.geom(*k).visible).collect()
+        WinKind::ALL
+            .into_iter()
+            .filter(|k| self.st.geom(*k).visible)
+            .collect()
     }
 
     /// Windows attached to `start` through touching edges.
@@ -646,10 +724,19 @@ impl App {
     }
 
     fn monitor_rects(&self) -> Vec<(i32, i32, i32, i32)> {
-        let Some(w) = self.wins.get(&WinKind::Main) else { return vec![] };
+        let Some(w) = self.wins.get(&WinKind::Main) else {
+            return vec![];
+        };
         w.window
             .available_monitors()
-            .map(|m| (m.position().x, m.position().y, m.size().width as i32, m.size().height as i32))
+            .map(|m| {
+                (
+                    m.position().x,
+                    m.position().y,
+                    m.size().width as i32,
+                    m.size().height as i32,
+                )
+            })
             .collect()
     }
 
@@ -659,8 +746,12 @@ impl App {
         }
         let mut best_x: Option<i32> = None;
         let mut best_y: Option<i32> = None;
-        let others: Vec<(i32, i32, i32, i32)> =
-            self.visible_kinds().into_iter().filter(|k| !moving.contains(k)).map(|k| self.rect_of(k)).collect();
+        let others: Vec<(i32, i32, i32, i32)> = self
+            .visible_kinds()
+            .into_iter()
+            .filter(|k| !moving.contains(k))
+            .map(|k| self.rect_of(k))
+            .collect();
         let mons = self.monitor_rects();
         let consider = |cur: &mut Option<i32>, d: i32| {
             if d.abs() < SNAP && cur.is_none_or(|c| d.abs() < c.abs()) {
@@ -700,15 +791,20 @@ impl App {
 
     /// Snapshot of the visible windows' rectangles (screen pixels).
     fn layout_snapshot(&self) -> Vec<(WinKind, (i32, i32, i32, i32))> {
-        self.visible_kinds().into_iter().map(|k| (k, self.rect_of(k))).collect()
+        self.visible_kinds()
+            .into_iter()
+            .map(|k| (k, self.rect_of(k)))
+            .collect()
     }
 
     /// After window sizes changed (shade, double size, playlist resize), keep
     /// docked windows attached: each window anchored below or right of
     /// another follows that window's new edge.
     fn relayout_from(&mut self, before: Vec<(WinKind, (i32, i32, i32, i32))>) {
-        let sizes: Vec<(WinKind, (i32, i32))> =
-            before.iter().map(|(k, _)| (*k, (self.rect_of(*k).2, self.rect_of(*k).3))).collect();
+        let sizes: Vec<(WinKind, (i32, i32))> = before
+            .iter()
+            .map(|(k, _)| (*k, (self.rect_of(*k).2, self.rect_of(*k).3)))
+            .collect();
         for (k, (x, y)) in relayout(&before, &sizes) {
             let g = self.st.geom(k);
             if g.x != x || g.y != y {
@@ -735,14 +831,20 @@ impl App {
             return;
         };
         match drag {
-            Drag::Move { start_cursor, windows } => {
+            Drag::Move {
+                start_cursor,
+                windows,
+            } => {
                 let dx = cur.0 - start_cursor.0;
                 let dy = cur.1 - start_cursor.1;
                 let windows = windows.clone();
                 // Snap relative to the start positions.
                 let kinds: Vec<WinKind> = windows.iter().map(|w| w.0).collect();
                 // Temporarily evaluate snapping from the original positions.
-                let saved: Vec<(WinKind, i32, i32)> = kinds.iter().map(|k| (*k, self.st.geom(*k).x, self.st.geom(*k).y)).collect();
+                let saved: Vec<(WinKind, i32, i32)> = kinds
+                    .iter()
+                    .map(|k| (*k, self.st.geom(*k).x, self.st.geom(*k).y))
+                    .collect();
                 for (k, x, y) in &windows {
                     let g = self.st.geom_mut(*k);
                     g.x = *x;
@@ -761,7 +863,10 @@ impl App {
                     }
                 }
             }
-            Drag::Resize { start_cursor, start_size } => {
+            Drag::Resize {
+                start_cursor,
+                start_size,
+            } => {
                 let s = self.ui_scale;
                 let dx = (cur.0 - start_cursor.0) / s;
                 let dy = (cur.1 - start_cursor.1) / s;
@@ -769,7 +874,11 @@ impl App {
                 let w_px = 275 + start_size.0 * PL_SEG_W + dx;
                 let h_px = 116 + start_size.1 * PL_SEG_H + dy;
                 let nw = ((w_px - 275 + PL_SEG_W / 2) / PL_SEG_W).max(0);
-                let nh = if self.st.pl.shade { start_size.1 } else { ((h_px - 116 + PL_SEG_H / 2) / PL_SEG_H).max(0) };
+                let nh = if self.st.pl.shade {
+                    start_size.1
+                } else {
+                    ((h_px - 116 + PL_SEG_H / 2) / PL_SEG_H).max(0)
+                };
                 if (nw, nh) != self.st.pl_size {
                     self.st.pl_size = (nw, nh);
                     self.sync_sizes();
@@ -792,22 +901,35 @@ impl App {
             match r {
                 WmRequest::BeginMove => {
                     let start = self.cursor_global(k);
-                    let group = if k == WinKind::Main { self.docked_group(k) } else { vec![k] };
-                    let windows = group.into_iter().map(|w| (w, self.st.geom(w).x, self.st.geom(w).y)).collect();
-                    self.drag = Some(Drag::Move { start_cursor: start, windows });
+                    let group = if k == WinKind::Main {
+                        self.docked_group(k)
+                    } else {
+                        vec![k]
+                    };
+                    let windows = group
+                        .into_iter()
+                        .map(|w| (w, self.st.geom(w).x, self.st.geom(w).y))
+                        .collect();
+                    self.drag = Some(Drag::Move {
+                        start_cursor: start,
+                        windows,
+                    });
                     self.capture = Some(k);
                 }
                 WmRequest::BeginResize => {
                     let start = self.cursor_global(k);
-                    self.drag = Some(Drag::Resize { start_cursor: start, start_size: self.st.pl_size });
+                    self.drag = Some(Drag::Resize {
+                        start_cursor: start,
+                        start_size: self.st.pl_size,
+                    });
                     self.capture = Some(k);
                 }
             }
         }
-        if self.st.dirty {
-            if let Some(w) = self.wins.get(&k) {
-                w.window.request_redraw();
-            }
+        if self.st.dirty
+            && let Some(w) = self.wins.get(&k)
+        {
+            w.window.request_redraw();
         }
     }
 
@@ -827,14 +949,24 @@ impl App {
         let w = self.wins.get_mut(&k).unwrap();
         if w.cursor_kind != Some(kind) {
             w.cursor_kind = Some(kind);
-            match self.cursors.get(&kind).or_else(|| self.cursors.get(&CursorKind::Normal)) {
+            match self
+                .cursors
+                .get(&kind)
+                .or_else(|| self.cursors.get(&CursorKind::Normal))
+            {
                 Some(c) => w.window.set_cursor(Cursor::Custom(c.clone())),
                 None => w.window.set_cursor(Cursor::Icon(CursorIcon::Default)),
             }
         }
     }
 
-    fn handle_key(&mut self, el: &ActiveEventLoop, key: &winit::keyboard::Key, code: PhysicalKey, focused: WinKind) {
+    fn handle_key(
+        &mut self,
+        el: &ActiveEventLoop,
+        key: &winit::keyboard::Key,
+        code: PhysicalKey,
+        focused: WinKind,
+    ) {
         use winit::keyboard::Key as K;
         let m = self.mods;
         if !self.menus.is_empty() {
@@ -957,7 +1089,9 @@ impl App {
             (K::Named(NamedKey::ArrowRight), _) => Some(Cmd::SeekBy(5.0)),
             (K::Named(NamedKey::ArrowUp), _) => Some(Cmd::VolumeBy(1)),
             (K::Named(NamedKey::ArrowDown), _) => Some(Cmd::VolumeBy(-1)),
-            (K::Named(NamedKey::Insert), _) if focused == WinKind::Playlist => Some(Cmd::PlAddFiles),
+            (K::Named(NamedKey::Insert), _) if focused == WinKind::Playlist => {
+                Some(Cmd::PlAddFiles)
+            }
             (_, Some(c)) if m.alt => match c {
                 'w' => Some(Cmd::ToggleWindow(WinKind::Main)),
                 'e' => Some(Cmd::ToggleWindow(WinKind::Playlist)),
@@ -1031,7 +1165,14 @@ impl App {
         self.close_menus();
         let skins = list_skins();
         let bookmarks: Vec<String> = self.bookmarks.iter().map(|b| b.0.clone()).collect();
-        let items = menu::build(id, &MenuContext { state: &self.st, skins: &skins, bookmarks: &bookmarks });
+        let items = menu::build(
+            id,
+            &MenuContext {
+                state: &self.st,
+                skins: &skins,
+                bookmarks: &bookmarks,
+            },
+        );
         let g = *self.st.geom(owner);
         let s = self.scale(owner);
         self.menu_owner = Some(owner);
@@ -1064,7 +1205,9 @@ impl App {
         #[cfg(all(unix, not(target_os = "macos")))]
         {
             use winit::platform::x11::{WindowAttributesExtX11, WindowType};
-            attrs = attrs.with_override_redirect(true).with_x11_window_type(vec![WindowType::PopupMenu]);
+            attrs = attrs
+                .with_override_redirect(true)
+                .with_x11_window_type(vec![WindowType::PopupMenu]);
         }
         #[cfg(windows)]
         {
@@ -1112,7 +1255,11 @@ impl App {
         m.os.window.request_redraw();
         self.close_menus_from(depth + 1);
         if let Some(i) = item
-            && let Item::Sub { items, enabled: true, .. } = &self.menus[depth].level.items[i]
+            && let Item::Sub {
+                items,
+                enabled: true,
+                ..
+            } = &self.menus[depth].level.items[i]
         {
             let items = items.clone();
             let m = &self.menus[depth];
@@ -1125,7 +1272,9 @@ impl App {
 
     fn menu_activate(&mut self, el: &ActiveEventLoop, depth: usize, i: usize) {
         match self.menus[depth].level.items.get(i).cloned() {
-            Some(Item::Action { cmd, enabled: true, .. }) => {
+            Some(Item::Action {
+                cmd, enabled: true, ..
+            }) => {
                 self.close_menus();
                 self.st.push(cmd);
             }
@@ -1141,11 +1290,16 @@ impl App {
         use winit::keyboard::Key as K;
         let depth = self.menus.len() - 1;
         let n = self.menus[depth].level.items.len();
-        let selectable: Vec<usize> = (0..n).filter(|&i| !matches!(self.menus[depth].level.items[i], Item::Sep)).collect();
+        let selectable: Vec<usize> = (0..n)
+            .filter(|&i| !matches!(self.menus[depth].level.items[i], Item::Sep))
+            .collect();
         if selectable.is_empty() {
             return;
         }
-        let cur = self.menus[depth].level.hover.and_then(|h| selectable.iter().position(|&s| s == h));
+        let cur = self.menus[depth]
+            .level
+            .hover
+            .and_then(|h| selectable.iter().position(|&s| s == h));
         match key {
             K::Named(NamedKey::Escape) => {
                 if depth == 0 {
@@ -1160,7 +1314,9 @@ impl App {
                 self.menus[depth].os.window.request_redraw();
             }
             K::Named(NamedKey::ArrowUp) => {
-                let next = cur.map(|c| (c + selectable.len() - 1) % selectable.len()).unwrap_or(selectable.len() - 1);
+                let next = cur
+                    .map(|c| (c + selectable.len() - 1) % selectable.len())
+                    .unwrap_or(selectable.len() - 1);
                 self.menus[depth].level.hover = Some(selectable[next]);
                 self.menus[depth].os.window.request_redraw();
             }
@@ -1168,7 +1324,8 @@ impl App {
                 if let Some(c) = cur {
                     self.menu_activate(el, depth, selectable[c]);
                     if let Some(sub) = self.menus.get_mut(depth + 1) {
-                        sub.level.hover = sub.level.items.iter().position(|i| !matches!(i, Item::Sep));
+                        sub.level.hover =
+                            sub.level.items.iter().position(|i| !matches!(i, Item::Sep));
                     }
                 }
             }
@@ -1185,7 +1342,9 @@ impl App {
         if !mouse_button_down() {
             return;
         }
-        let Some((cx, cy)) = crate::platform::global_cursor() else { return };
+        let Some((cx, cy)) = crate::platform::global_cursor() else {
+            return;
+        };
         let inside = self.menus.iter().any(|m| {
             let s = m.os.window.inner_size();
             cx >= m.x && cy >= m.y && cx < m.x + s.width as i32 && cy < m.y + s.height as i32
@@ -1208,7 +1367,10 @@ impl App {
             self.hide_tooltip();
             return;
         };
-        let busy = !self.menus.is_empty() || self.drag.is_some() || self.capture.is_some() || mouse_button_down();
+        let busy = !self.menus.is_empty()
+            || self.drag.is_some()
+            || self.capture.is_some()
+            || mouse_button_down();
         if busy || since.elapsed() > Duration::from_secs(7) {
             self.hide_tooltip();
             if busy {
@@ -1220,7 +1382,9 @@ impl App {
             return;
         }
         let _ = k;
-        let Some((cx, cy)) = crate::platform::global_cursor() else { return };
+        let Some((cx, cy)) = crate::platform::global_cursor() else {
+            return;
+        };
         let fonts = &self.st.fonts;
         let tw = fonts.measure(&text, menu::FONT_PX, crate::text::Weight::Regular);
         let (w, h) = (tw + 6, 16);
@@ -1236,14 +1400,18 @@ impl App {
         #[cfg(all(unix, not(target_os = "macos")))]
         {
             use winit::platform::x11::{WindowAttributesExtX11, WindowType};
-            attrs = attrs.with_override_redirect(true).with_x11_window_type(vec![WindowType::Tooltip]);
+            attrs = attrs
+                .with_override_redirect(true)
+                .with_x11_window_type(vec![WindowType::Tooltip]);
         }
         #[cfg(windows)]
         {
             use winit::platform::windows::WindowAttributesExtWindows;
             attrs = attrs.with_skip_taskbar(true);
         }
-        let Ok(window) = el.create_window(attrs) else { return };
+        let Ok(window) = el.create_window(attrs) else {
+            return;
+        };
         let Some(os) = OsWin::new(window) else { return };
         os.window.request_redraw();
         self.tip = Some(Tooltip { os, w, h, text });
@@ -1253,7 +1421,11 @@ impl App {
     // Dialogs
 
     fn open_dialog(&mut self, el: &ActiveEventLoop, dialog: Dialog) {
-        if let Some(i) = self.dialogs.iter().position(|d| d.dialog.kind == dialog.kind) {
+        if let Some(i) = self
+            .dialogs
+            .iter()
+            .position(|d| d.dialog.kind == dialog.kind)
+        {
             self.dialogs[i].os.window.focus_window();
             return;
         }
@@ -1262,10 +1434,15 @@ impl App {
         let attrs = Window::default_attributes()
             .with_title(dialog.title.clone())
             .with_resizable(false)
-            .with_inner_size(PhysicalSize::new((dialog.w * s) as u32, (dialog.h * s) as u32))
+            .with_inner_size(PhysicalSize::new(
+                (dialog.w * s) as u32,
+                (dialog.h * s) as u32,
+            ))
             .with_position(PhysicalPosition::new(main.x + 40, main.y + 40))
             .with_window_icon(Some(app_icon()));
-        let Ok(window) = el.create_window(attrs) else { return };
+        let Ok(window) = el.create_window(attrs) else {
+            return;
+        };
         let Some(os) = OsWin::new(window) else { return };
         os.window.request_redraw();
         if self.st.always_on_top {
@@ -1306,7 +1483,13 @@ impl App {
     }
 
     fn file_info_dialog(&self) -> Option<Dialog> {
-        let idx = self.st.playlist.entries.iter().position(|e| e.selected).or(self.st.playlist.current)?;
+        let idx = self
+            .st
+            .playlist
+            .entries
+            .iter()
+            .position(|e| e.selected)
+            .or(self.st.playlist.current)?;
         let e = self.st.playlist.entries.get(idx)?;
         let mut fields = vec![("Location".to_string(), e.location())];
         if let Some(p) = e.path()
@@ -1316,16 +1499,43 @@ impl App {
             fields.push(("Title".into(), opt(&info.title)));
             fields.push(("Artist".into(), opt(&info.artist)));
             fields.push(("Album".into(), opt(&info.album)));
-            fields.push(("Year".into(), info.year.map(|y| y.to_string()).unwrap_or_default()));
-            fields.push(("Track".into(), info.track_no.map(|y| y.to_string()).unwrap_or_default()));
+            fields.push((
+                "Year".into(),
+                info.year.map(|y| y.to_string()).unwrap_or_default(),
+            ));
+            fields.push((
+                "Track".into(),
+                info.track_no.map(|y| y.to_string()).unwrap_or_default(),
+            ));
             fields.push(("Genre".into(), opt(&info.genre)));
             fields.push(("Comment".into(), opt(&info.comment)));
-            fields.push(("Length".into(), info.duration.map(format_time).unwrap_or_default()));
-            fields.push(("Bitrate".into(), info.bitrate.map(|b| format!("{b} kbps")).unwrap_or_default()));
-            fields.push(("Sample rate".into(), info.sample_rate.map(|b| format!("{b} Hz")).unwrap_or_default()));
+            fields.push((
+                "Length".into(),
+                info.duration.map(format_time).unwrap_or_default(),
+            ));
+            fields.push((
+                "Bitrate".into(),
+                info.bitrate
+                    .map(|b| format!("{b} kbps"))
+                    .unwrap_or_default(),
+            ));
+            fields.push((
+                "Sample rate".into(),
+                info.sample_rate
+                    .map(|b| format!("{b} Hz"))
+                    .unwrap_or_default(),
+            ));
             fields.push((
                 "Channels".into(),
-                info.channels.map(|c| if c == 1 { "Mono".into() } else { format!("{c} (stereo)") }).unwrap_or_default(),
+                info.channels
+                    .map(|c| {
+                        if c == 1 {
+                            "Mono".into()
+                        } else {
+                            format!("{c} (stereo)")
+                        }
+                    })
+                    .unwrap_or_default(),
             ));
             if let Ok(m) = std::fs::metadata(p) {
                 fields.push(("File size".into(), format!("{} bytes", m.len())));
@@ -1350,13 +1560,24 @@ impl App {
             let audio: Vec<&str> = metadata::AUDIO_EXTENSIONS.to_vec();
             let result: Vec<PathBuf> = match pick {
                 Pick::OpenFiles | Pick::AddFiles => d
-                    .set_title(if pick == Pick::OpenFiles { "Open file(s)" } else { "Add file(s) to playlist" })
-                    .add_filter("All supported types", &[audio.as_slice(), &["m3u", "m3u8", "pls"]].concat())
+                    .set_title(if pick == Pick::OpenFiles {
+                        "Open file(s)"
+                    } else {
+                        "Add file(s) to playlist"
+                    })
+                    .add_filter(
+                        "All supported types",
+                        &[audio.as_slice(), &["m3u", "m3u8", "pls"]].concat(),
+                    )
                     .add_filter("Playlists", &["m3u", "m3u8", "pls"])
                     .add_filter("All files", &["*"])
                     .pick_files()
                     .unwrap_or_default(),
-                Pick::OpenFolder | Pick::AddFolder => d.set_title("Open folder").pick_folder().into_iter().collect(),
+                Pick::OpenFolder | Pick::AddFolder => d
+                    .set_title("Open folder")
+                    .pick_folder()
+                    .into_iter()
+                    .collect(),
                 Pick::LoadPlaylist => d
                     .set_title("Load playlist")
                     .add_filter("Playlists", &["m3u", "m3u8", "pls"])
@@ -1472,7 +1693,9 @@ impl App {
     // Playback
 
     fn play_index(&mut self, i: usize) {
-        let Some(e) = self.st.playlist.entries.get(i) else { return };
+        let Some(e) = self.st.playlist.entries.get(i) else {
+            return;
+        };
         let src = e.source.clone();
         self.st.playlist.current = Some(i);
         self.st.now = Default::default();
@@ -1517,7 +1740,13 @@ impl App {
     fn poll_audio(&mut self) {
         while let Ok(ev) = self.st.engine.events.try_recv() {
             match ev {
-                AudioEvent::Opened { duration, kbps, khz, channels, stream_name } => {
+                AudioEvent::Opened {
+                    duration,
+                    kbps,
+                    khz,
+                    channels,
+                    stream_name,
+                } => {
                     self.errors_in_row = 0;
                     self.st.working = false;
                     let st = &mut self.st;
@@ -1655,8 +1884,14 @@ impl App {
                 {
                     st.playlist.select_none();
                     st.playlist.entries[i].selected = true;
-                    let target = (c + 1).min(st.playlist.len() - 1) as isize;
-                    let delta = target - i as isize + if (i as isize) < target { 0 } else { 0 };
+                    // Moving an entry from above the current one shifts the
+                    // current entry up by one.
+                    let target = if i < c {
+                        c
+                    } else {
+                        (c + 1).min(st.playlist.len() - 1)
+                    } as isize;
+                    let delta = target - i as isize;
                     st.playlist.move_selected(delta);
                     st.show_message("Queued to play next", 1.5);
                 }
@@ -1742,7 +1977,13 @@ impl App {
             }
             Cmd::About => self.open_dialog(el, Dialog::about()),
             Cmd::JumpToFile => {
-                let titles = self.st.playlist.entries.iter().map(|e| e.title.clone()).collect();
+                let titles = self
+                    .st
+                    .playlist
+                    .entries
+                    .iter()
+                    .map(|e| e.title.clone())
+                    .collect();
                 self.open_dialog(el, Dialog::jump_to_file(titles));
             }
             Cmd::JumpToTime => {
@@ -1818,7 +2059,13 @@ impl App {
                 }
             }
             Cmd::PlReadInfo => {
-                let ids: Vec<u64> = st.playlist.entries.iter().filter(|e| e.selected).map(|e| e.id).collect();
+                let ids: Vec<u64> = st
+                    .playlist
+                    .entries
+                    .iter()
+                    .filter(|e| e.selected)
+                    .map(|e| e.id)
+                    .collect();
                 self.request_info(&ids);
             }
             Cmd::PlGenerateHtml => self.pick(Pick::SaveHtml),
@@ -1844,8 +2091,13 @@ impl App {
                 }
             }
             Cmd::BookmarkSelected => {
-                let sel: Vec<(String, String)> =
-                    st.playlist.entries.iter().filter(|e| e.selected).map(|e| (e.title.clone(), e.location())).collect();
+                let sel: Vec<(String, String)> = st
+                    .playlist
+                    .entries
+                    .iter()
+                    .filter(|e| e.selected)
+                    .map(|e| (e.title.clone(), e.location()))
+                    .collect();
                 self.bookmarks.extend(sel);
                 self.save_libraries();
             }
@@ -1943,12 +2195,17 @@ impl App {
             }
             Pick::SavePlaylist => {
                 let p = &paths[0];
-                let r = match p.extension().and_then(|e| e.to_str()).map(|e| e.to_ascii_lowercase()) {
+                let r = match p
+                    .extension()
+                    .and_then(|e| e.to_str())
+                    .map(|e| e.to_ascii_lowercase())
+                {
                     Some(e) if e == "pls" => self.st.playlist.save_pls(p),
                     _ => self.st.playlist.save_m3u(p),
                 };
                 if let Err(e) = r {
-                    self.st.show_message(format!("Could not save playlist: {e}"), 3.0);
+                    self.st
+                        .show_message(format!("Could not save playlist: {e}"), 3.0);
                 }
             }
             Pick::LoadSkin => {
@@ -1957,11 +2214,18 @@ impl App {
                 let dir = config::skins_dir();
                 let _ = std::fs::create_dir_all(&dir);
                 let dst = dir.join(src.file_name().unwrap_or_default());
-                let use_path = if src.parent() != Some(dir.as_path()) && std::fs::copy(src, &dst).is_ok() { dst } else { src.clone() };
+                let use_path =
+                    if src.parent() != Some(dir.as_path()) && std::fs::copy(src, &dst).is_ok() {
+                        dst
+                    } else {
+                        src.clone()
+                    };
                 self.load_skin(el, Some(use_path));
             }
             Pick::LoadEqf => {
-                if let Some(presets) = std::fs::read(&paths[0]).ok().and_then(|b| config::parse_eqf(&b))
+                if let Some(presets) = std::fs::read(&paths[0])
+                    .ok()
+                    .and_then(|b| config::parse_eqf(&b))
                     && let Some((name, p, b)) = presets.first().cloned()
                 {
                     self.st.eq.preamp = p;
@@ -1977,7 +2241,10 @@ impl App {
                 }
             }
             Pick::SaveEqf => {
-                let name = paths[0].file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_default();
+                let name = paths[0]
+                    .file_stem()
+                    .map(|s| s.to_string_lossy().into_owned())
+                    .unwrap_or_default();
                 let data = config::write_eqf(&name, self.st.eq.preamp, &self.st.eq.bands);
                 let _ = std::fs::write(&paths[0], data);
             }
@@ -1994,7 +2261,9 @@ impl App {
     fn paint(&mut self, k: WinKind) {
         let (w, h) = self.st.base_size(k);
         let scale = self.scale(k);
-        let Some(os) = self.wins.get_mut(&k) else { return };
+        let Some(os) = self.wins.get_mut(&k) else {
+            return;
+        };
         if os.frame.w != w || os.frame.h != h {
             os.frame = Bitmap::new(w, h, 0xFF00_0000);
         }
@@ -2087,7 +2356,11 @@ impl App {
                 self.st.vis.analyze(&samples, small, &opts);
                 if std::env::var_os("FERRAMP_DEBUG_VIS").is_some() {
                     let peak = samples.iter().fold(0f32, |m, s| m.max(s.abs()));
-                    eprintln!("vis: {} samples, peak {peak:.3}, bars {:?}", samples.len(), self.st.vis.heights());
+                    eprintln!(
+                        "vis: {} samples, peak {peak:.3}, bars {:?}",
+                        samples.len(),
+                        self.st.vis.heights()
+                    );
                 }
                 self.st.vis_samples = samples;
             }
@@ -2123,7 +2396,12 @@ impl App {
             || self.st.message.is_some()
             || self.hover_tip.is_some()
             || self.main.wants_animation(&self.st);
-        self.next_frame = now + if animating { FRAME } else { Duration::from_millis(250) };
+        self.next_frame = now
+            + if animating {
+                FRAME
+            } else {
+                Duration::from_millis(250)
+            };
         el.set_control_flow(ControlFlow::WaitUntil(self.next_frame));
     }
 }
@@ -2153,7 +2431,11 @@ impl ApplicationHandler<UserEvent> for App {
     fn window_event(&mut self, el: &ActiveEventLoop, id: WindowId, event: WindowEvent) {
         if let WindowEvent::ModifiersChanged(m) = &event {
             let s: ModifiersState = m.state();
-            self.mods = Mods { shift: s.shift_key(), ctrl: s.control_key() || s.super_key(), alt: s.alt_key() };
+            self.mods = Mods {
+                shift: s.shift_key(),
+                ctrl: s.control_key() || s.super_key(),
+                alt: s.alt_key(),
+            };
             return;
         }
         if let Some(t) = &mut self.tip
@@ -2163,7 +2445,17 @@ impl ApplicationHandler<UserEvent> for App {
                 let mut f = Bitmap::new(t.w, t.h, crate::gfx::rgb(255, 255, 225));
                 f.rect_outline(0, 0, t.w, t.h, crate::gfx::rgb(0, 0, 0));
                 let clip = crate::gfx::Rect::new(1, 1, t.w - 2, t.h - 2);
-                self.st.fonts.draw(&mut f, &t.text, 3, 1, menu::FONT_PX, crate::text::Weight::Regular, crate::gfx::rgb(0, 0, 0), clip, true);
+                self.st.fonts.draw(
+                    &mut f,
+                    &t.text,
+                    3,
+                    1,
+                    menu::FONT_PX,
+                    crate::text::Weight::Regular,
+                    crate::gfx::rgb(0, 0, 0),
+                    clip,
+                    true,
+                );
                 t.os.frame = f;
                 t.os.present(self.ui_scale);
             }
@@ -2181,12 +2473,17 @@ impl ApplicationHandler<UserEvent> for App {
                 }
                 WindowEvent::CursorMoved { position, .. } => {
                     let s = self.ui_scale as f64;
-                    let item = self.menus[depth].level.hit((position.x / s) as i32, (position.y / s) as i32);
+                    let item = self.menus[depth]
+                        .level
+                        .hit((position.x / s) as i32, (position.y / s) as i32);
                     if item.is_some() || depth + 1 == self.menus.len() {
                         self.menu_hover(el, depth, item);
                     }
                 }
-                WindowEvent::MouseInput { state: ElementState::Released, .. } => {
+                WindowEvent::MouseInput {
+                    state: ElementState::Released,
+                    ..
+                } => {
                     if self.menu_opened_at.elapsed() < Duration::from_millis(250) {
                         return;
                     }
@@ -2194,7 +2491,10 @@ impl ApplicationHandler<UserEvent> for App {
                         self.menu_activate(el, depth, i);
                     }
                 }
-                WindowEvent::MouseInput { state: ElementState::Pressed, .. } => {
+                WindowEvent::MouseInput {
+                    state: ElementState::Pressed,
+                    ..
+                } => {
                     self.menu_opened_at = Instant::now() - Duration::from_secs(1);
                 }
                 _ => {}
@@ -2217,7 +2517,11 @@ impl ApplicationHandler<UserEvent> for App {
                 WindowEvent::CursorMoved { position, .. } => {
                     self.dialogs[idx].os.cursor = (position.x, position.y);
                 }
-                WindowEvent::MouseInput { state, button: MouseButton::Left, .. } => {
+                WindowEvent::MouseInput {
+                    state,
+                    button: MouseButton::Left,
+                    ..
+                } => {
                     let s = self.ui_scale as f64;
                     let c = self.dialogs[idx].os.cursor;
                     let (x, y) = ((c.0 / s) as i32, (c.1 / s) as i32);
@@ -2233,7 +2537,9 @@ impl ApplicationHandler<UserEvent> for App {
                     self.dialogs[idx].dialog.wheel(wheel_steps(delta));
                     self.dialogs[idx].os.window.request_redraw();
                 }
-                WindowEvent::KeyboardInput { event, .. } if event.state == ElementState::Pressed => {
+                WindowEvent::KeyboardInput { event, .. }
+                    if event.state == ElementState::Pressed =>
+                {
                     use winit::keyboard::Key as K;
                     let k = match &event.logical_key {
                         K::Named(NamedKey::Enter) => DKey::Enter,
@@ -2251,16 +2557,26 @@ impl ApplicationHandler<UserEvent> for App {
                         K::Named(NamedKey::PageDown) => DKey::PageDown,
                         K::Named(NamedKey::Space) => DKey::Char(' '),
                         K::Character(s) => {
-                            let t = event.text.as_ref().map(|t| t.to_string()).unwrap_or_else(|| s.to_string());
+                            let t = event
+                                .text
+                                .as_ref()
+                                .map(|t| t.to_string())
+                                .unwrap_or_else(|| s.to_string());
                             match t.chars().next() {
-                                Some(c) if !c.is_control() => DKey::Char(if self.mods.ctrl { s.chars().next().unwrap_or(c) } else { c }),
+                                Some(c) if !c.is_control() => DKey::Char(if self.mods.ctrl {
+                                    s.chars().next().unwrap_or(c)
+                                } else {
+                                    c
+                                }),
                                 _ => DKey::Other,
                             }
                         }
                         _ => DKey::Other,
                     };
                     let clip = if self.mods.ctrl && matches!(k, DKey::Char('v') | DKey::Char('V')) {
-                        arboard::Clipboard::new().ok().and_then(|mut c| c.get_text().ok())
+                        arboard::Clipboard::new()
+                            .ok()
+                            .and_then(|mut c| c.get_text().ok())
                     } else {
                         None
                     };
@@ -2281,7 +2597,9 @@ impl ApplicationHandler<UserEvent> for App {
                     self.st.focused = Some(k);
                 } else if self.st.focused == Some(k) {
                     self.st.focused = None;
-                    if !self.menus.is_empty() && self.menu_opened_at.elapsed() > Duration::from_millis(300) {
+                    if !self.menus.is_empty()
+                        && self.menu_opened_at.elapsed() > Duration::from_millis(300)
+                    {
                         // Another application took focus.
                         let ours = self.wins.values().any(|w| w.window.has_focus());
                         if !ours {
@@ -2359,7 +2677,16 @@ impl ApplicationHandler<UserEvent> for App {
                         self.st.focused = Some(k);
                         let double = b == Button::Left && self.is_double(id, pos);
                         self.capture = Some(k);
-                        self.window_mouse(k, MouseEvent::Down { x, y, button: b, double, mods: self.mods });
+                        self.window_mouse(
+                            k,
+                            MouseEvent::Down {
+                                x,
+                                y,
+                                button: b,
+                                double,
+                                mods: self.mods,
+                            },
+                        );
                     }
                     ElementState::Released => {
                         if self.drag.take().is_some() {
@@ -2440,13 +2767,19 @@ fn parse_eq_values(s: Option<&str>) -> (u8, [u8; 10]) {
 }
 
 fn format_eq_values(pre: u8, bands: &[u8; 10]) -> String {
-    std::iter::once(pre).chain(bands.iter().copied()).map(|v| v.to_string()).collect::<Vec<_>>().join(",")
+    std::iter::once(pre)
+        .chain(bands.iter().copied())
+        .map(|v| v.to_string())
+        .collect::<Vec<_>>()
+        .join(",")
 }
 
 /// Open a web page in the user's browser.
 pub fn open_url(url: &str) {
     #[cfg(target_os = "windows")]
-    let r = std::process::Command::new("cmd").args(["/C", "start", "", url]).spawn();
+    let r = std::process::Command::new("cmd")
+        .args(["/C", "start", "", url])
+        .spawn();
     #[cfg(target_os = "macos")]
     let r = std::process::Command::new("open").arg(url).spawn();
     #[cfg(all(unix, not(target_os = "macos")))]
@@ -2466,9 +2799,18 @@ fn wheel_steps(delta: MouseScrollDelta) -> i32 {
 /// New positions after a size change. `before` holds the old rectangles,
 /// `sizes` the new sizes. A window whose top edge lay on another's bottom
 /// edge (overlapping horizontally) stays below it; likewise for left/right.
-fn relayout(before: &[(WinKind, (i32, i32, i32, i32))], sizes: &[(WinKind, (i32, i32))]) -> Vec<(WinKind, (i32, i32))> {
+fn relayout(
+    before: &[(WinKind, (i32, i32, i32, i32))],
+    sizes: &[(WinKind, (i32, i32))],
+) -> Vec<(WinKind, (i32, i32))> {
     let n = before.len();
-    let size = |k: WinKind| sizes.iter().find(|s| s.0 == k).map(|s| s.1).unwrap_or((0, 0));
+    let size = |k: WinKind| {
+        sizes
+            .iter()
+            .find(|s| s.0 == k)
+            .map(|s| s.1)
+            .unwrap_or((0, 0))
+    };
     // Anchor of each window: (index of anchor, attached below?).
     let mut anchor: Vec<Option<(usize, bool)>> = vec![None; n];
     for (i, (_, r)) in before.iter().enumerate() {
@@ -2504,7 +2846,11 @@ fn relayout(before: &[(WinKind, (i32, i32, i32, i32))], sizes: &[(WinKind, (i32,
                 let (px, py) = place(j, before, anchor, size, memo, depth + 1);
                 let pr = before[j].1;
                 let (pw, ph) = size(before[j].0);
-                if below { (px + (r.0 - pr.0), py + ph) } else { (px + pw, py + (r.1 - pr.1)) }
+                if below {
+                    (px + (r.0 - pr.0), py + ph)
+                } else {
+                    (px + pw, py + (r.1 - pr.1))
+                }
             }
             _ => (r.0, r.1),
         };
@@ -2512,7 +2858,9 @@ fn relayout(before: &[(WinKind, (i32, i32, i32, i32))], sizes: &[(WinKind, (i32,
         pos
     }
     let mut memo = vec![None; n];
-    (0..n).map(|i| (before[i].0, place(i, before, &anchor, &size, &mut memo, 0))).collect()
+    (0..n)
+        .map(|i| (before[i].0, place(i, before, &anchor, &size, &mut memo, 0)))
+        .collect()
 }
 
 fn touching(a: (i32, i32, i32, i32), b: (i32, i32, i32, i32)) -> bool {
@@ -2520,14 +2868,17 @@ fn touching(a: (i32, i32, i32, i32), b: (i32, i32, i32, i32)) -> bool {
     let (bx, by, bw, bh) = b;
     let overlap_x = ax < bx + bw && bx < ax + aw;
     let overlap_y = ay < by + bh && by < ay + ah;
-    (overlap_y && (ax + aw == bx || bx + bw == ax)) || (overlap_x && (ay + ah == by || by + bh == ay))
+    (overlap_y && (ax + aw == bx || bx + bw == ax))
+        || (overlap_x && (ay + ah == by || by + bh == ay))
 }
 
 fn walk(dir: &Path, out: &mut Vec<PathBuf>, depth: u32) {
     if depth > 16 {
         return;
     }
-    let Ok(rd) = std::fs::read_dir(dir) else { return };
+    let Ok(rd) = std::fs::read_dir(dir) else {
+        return;
+    };
     for e in rd.flatten() {
         let p = e.path();
         if p.is_dir() {
@@ -2548,11 +2899,18 @@ pub fn list_skins() -> Vec<PathBuf> {
     }
     let mut out = Vec::new();
     for d in dirs {
-        let Ok(rd) = std::fs::read_dir(&d) else { continue };
+        let Ok(rd) = std::fs::read_dir(&d) else {
+            continue;
+        };
         for e in rd.flatten() {
             let p = e.path();
-            let ext = p.extension().and_then(|e| e.to_str()).map(|e| e.to_ascii_lowercase());
-            if matches!(ext.as_deref(), Some("wsz") | Some("zip")) || (p.is_dir() && p.join("main.bmp").exists()) {
+            let ext = p
+                .extension()
+                .and_then(|e| e.to_str())
+                .map(|e| e.to_ascii_lowercase());
+            if matches!(ext.as_deref(), Some("wsz") | Some("zip"))
+                || (p.is_dir() && p.join("main.bmp").exists())
+            {
                 out.push(p);
             }
         }
@@ -2582,7 +2940,9 @@ mod imp_buttons {
                 .and_then(|r| r.reply().ok())
                 .map(|r| {
                     let m = r.mask;
-                    m.contains(KeyButMask::BUTTON1) || m.contains(KeyButMask::BUTTON2) || m.contains(KeyButMask::BUTTON3)
+                    m.contains(KeyButMask::BUTTON1)
+                        || m.contains(KeyButMask::BUTTON2)
+                        || m.contains(KeyButMask::BUTTON3)
                 })
                 .unwrap_or(false)
         })
@@ -2592,9 +2952,14 @@ mod imp_buttons {
 #[cfg(windows)]
 mod imp_buttons {
     pub fn down() -> bool {
-        use windows_sys::Win32::UI::Input::KeyboardAndMouse::{GetAsyncKeyState, VK_LBUTTON, VK_RBUTTON};
+        use windows_sys::Win32::UI::Input::KeyboardAndMouse::{
+            GetAsyncKeyState, VK_LBUTTON, VK_RBUTTON,
+        };
         // SAFETY: simple state query.
-        unsafe { (GetAsyncKeyState(VK_LBUTTON as i32) as u16 & 0x8000) != 0 || (GetAsyncKeyState(VK_RBUTTON as i32) as u16 & 0x8000) != 0 }
+        unsafe {
+            (GetAsyncKeyState(VK_LBUTTON as i32) as u16 & 0x8000) != 0
+                || (GetAsyncKeyState(VK_RBUTTON as i32) as u16 & 0x8000) != 0
+        }
     }
 }
 
@@ -2606,9 +2971,15 @@ mod imp_buttons {
 }
 
 fn html_playlist(st: &State) -> String {
-    let esc = |s: &str| s.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;");
+    let esc = |s: &str| {
+        s.replace('&', "&amp;")
+            .replace('<', "&lt;")
+            .replace('>', "&gt;")
+    };
     let (total, _) = st.playlist.total_duration();
-    let mut s = String::from("<!DOCTYPE html>\n<html><head><meta charset=\"utf-8\"><title>Ferramp playlist</title>\n<style>body{background:#000040;color:#fff;font-family:Arial,sans-serif}h1{color:#ffbf00}li{color:#ffbf00}span{color:#fff}</style></head><body>\n");
+    let mut s = String::from(
+        "<!DOCTYPE html>\n<html><head><meta charset=\"utf-8\"><title>Ferramp playlist</title>\n<style>body{background:#000040;color:#fff;font-family:Arial,sans-serif}h1{color:#ffbf00}li{color:#ffbf00}span{color:#fff}</style></head><body>\n",
+    );
     s.push_str(&format!(
         "<h1>Ferramp playlist</h1><p>{} tracks in playlist, total length {}</p>\n<ol>\n",
         st.playlist.len(),
@@ -2630,7 +3001,18 @@ fn app_icon() -> winit::window::Icon {
     let mut b = Bitmap::new(32, 32, 0);
     let skin = Skin::builtin();
     let mut tmp = Bitmap::new(15, 17, 0);
-    skin.draw(&mut tmp, crate::skin::sprites::Sprite { sheet: crate::skin::sprites::Sheet::Main, x: 252, y: 90, w: 15, h: 17 }, 0, 0);
+    skin.draw(
+        &mut tmp,
+        crate::skin::sprites::Sprite {
+            sheet: crate::skin::sprites::Sheet::Main,
+            x: 252,
+            y: 90,
+            w: 15,
+            h: 17,
+        },
+        0,
+        0,
+    );
     for y in 0..32 {
         for x in 0..32 {
             let c = tmp.get(x * 15 / 32, y * 17 / 32);
@@ -2652,17 +3034,28 @@ mod tests {
             (WinKind::Playlist, (40, 272, 275, 232)),
         ];
         // Double size: main and eq twice as big.
-        let sizes = vec![(WinKind::Main, (550, 232)), (WinKind::Eq, (550, 232)), (WinKind::Playlist, (275, 232))];
+        let sizes = vec![
+            (WinKind::Main, (550, 232)),
+            (WinKind::Eq, (550, 232)),
+            (WinKind::Playlist, (275, 232)),
+        ];
         let out = relayout(&before, &sizes);
         assert_eq!(out[1].1, (40, 272));
         assert_eq!(out[2].1, (40, 504));
         // Shade the main window.
-        let sizes = vec![(WinKind::Main, (275, 14)), (WinKind::Eq, (275, 116)), (WinKind::Playlist, (275, 232))];
+        let sizes = vec![
+            (WinKind::Main, (275, 14)),
+            (WinKind::Eq, (275, 116)),
+            (WinKind::Playlist, (275, 232)),
+        ];
         let out = relayout(&before, &sizes);
         assert_eq!(out[1].1, (40, 54));
         assert_eq!(out[2].1, (40, 170));
         // Side by side: a window right of the playlist follows its width.
-        let before = vec![(WinKind::Playlist, (0, 0, 275, 116)), (WinKind::Eq, (275, 0, 275, 116))];
+        let before = vec![
+            (WinKind::Playlist, (0, 0, 275, 116)),
+            (WinKind::Eq, (275, 0, 275, 116)),
+        ];
         let sizes = vec![(WinKind::Playlist, (325, 116)), (WinKind::Eq, (275, 116))];
         assert_eq!(relayout(&before, &sizes)[1].1, (325, 0));
     }

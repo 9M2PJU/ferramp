@@ -24,21 +24,50 @@ const SEP_H: i32 = 9;
 
 #[derive(Clone, Debug)]
 pub enum Item {
-    Action { label: String, hotkey: String, cmd: Cmd, checked: bool, enabled: bool, default: bool },
-    Sub { label: String, items: Vec<Item>, enabled: bool },
+    Action {
+        label: String,
+        hotkey: String,
+        cmd: Cmd,
+        checked: bool,
+        enabled: bool,
+        default: bool,
+    },
+    Sub {
+        label: String,
+        items: Vec<Item>,
+        enabled: bool,
+    },
     Sep,
 }
 
 fn act(label: &str, hotkey: &str, cmd: Cmd) -> Item {
-    Item::Action { label: label.into(), hotkey: hotkey.into(), cmd, checked: false, enabled: true, default: false }
+    Item::Action {
+        label: label.into(),
+        hotkey: hotkey.into(),
+        cmd,
+        checked: false,
+        enabled: true,
+        default: false,
+    }
 }
 
 fn check(label: &str, hotkey: &str, cmd: Cmd, on: bool) -> Item {
-    Item::Action { label: label.into(), hotkey: hotkey.into(), cmd, checked: on, enabled: true, default: false }
+    Item::Action {
+        label: label.into(),
+        hotkey: hotkey.into(),
+        cmd,
+        checked: on,
+        enabled: true,
+        default: false,
+    }
 }
 
 fn sub(label: &str, items: Vec<Item>) -> Item {
-    Item::Sub { label: label.into(), items, enabled: true }
+    Item::Sub {
+        label: label.into(),
+        items,
+        enabled: true,
+    }
 }
 
 pub struct MenuContext<'a> {
@@ -84,9 +113,24 @@ pub fn build(id: MenuId, ctx: &MenuContext) -> Vec<Item> {
                 v
             }),
             Item::Sep,
-            check("&Main Window", "Alt+W", Cmd::ToggleWindow(WinKind::Main), st.main.visible),
-            check("Playlist &Editor", "Alt+E", Cmd::ToggleWindow(WinKind::Playlist), st.pl.visible),
-            check("E&qualizer", "Alt+G", Cmd::ToggleWindow(WinKind::Eq), st.eqw.visible),
+            check(
+                "&Main Window",
+                "Alt+W",
+                Cmd::ToggleWindow(WinKind::Main),
+                st.main.visible,
+            ),
+            check(
+                "Playlist &Editor",
+                "Alt+E",
+                Cmd::ToggleWindow(WinKind::Playlist),
+                st.pl.visible,
+            ),
+            check(
+                "E&qualizer",
+                "Alt+G",
+                Cmd::ToggleWindow(WinKind::Eq),
+                st.eqw.visible,
+            ),
             Item::Sep,
             sub("&Options", build(MenuId::Options, ctx)),
             sub("Play&back", build(MenuId::Playback, ctx)),
@@ -99,19 +143,50 @@ pub fn build(id: MenuId, ctx: &MenuContext) -> Vec<Item> {
             act("&File info", "Alt+3 or Dblclick", Cmd::FileInfo),
             act("&Jump to file...", "J", Cmd::JumpToFile),
             act("Jump to &time...", "Ctrl+J", Cmd::JumpToTime),
-            check("&Autoscroll songname", "", Cmd::ToggleAutoscroll, st.autoscroll),
+            check(
+                "&Autoscroll songname",
+                "",
+                Cmd::ToggleAutoscroll,
+                st.autoscroll,
+            ),
         ],
         MenuId::Time => vec![
-            check("Time &elapsed", "(Ctrl+T toggles)", Cmd::ToggleTimeMode, !st.time_remaining),
-            check("Time re&maining", "(Ctrl+T toggles)", Cmd::ToggleTimeMode, st.time_remaining),
+            check(
+                "Time &elapsed",
+                "(Ctrl+T toggles)",
+                Cmd::ToggleTimeMode,
+                !st.time_remaining,
+            ),
+            check(
+                "Time re&maining",
+                "(Ctrl+T toggles)",
+                Cmd::ToggleTimeMode,
+                st.time_remaining,
+            ),
         ],
         MenuId::Skins => {
-            let mut v = vec![act("S&kin Browser...", "Alt+S", Cmd::SkinBrowser), Item::Sep];
-            v.push(check("<Base Skin>", "", Cmd::LoadSkin(None), st.skin.path.is_none()));
+            let mut v = vec![
+                act("S&kin Browser...", "Alt+S", Cmd::SkinBrowser),
+                Item::Sep,
+            ];
+            v.push(check(
+                "<Base Skin>",
+                "",
+                Cmd::LoadSkin(None),
+                st.skin.path.is_none(),
+            ));
             for p in ctx.skins {
-                let name = p.file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_default();
+                let name = p
+                    .file_stem()
+                    .map(|s| s.to_string_lossy().into_owned())
+                    .unwrap_or_default();
                 let on = st.skin.path.as_deref() == Some(p.as_path());
-                v.push(check(&name.replace('&', "&&"), "", Cmd::LoadSkin(Some(p.clone())), on));
+                v.push(check(
+                    &name.replace('&', "&&"),
+                    "",
+                    Cmd::LoadSkin(Some(p.clone())),
+                    on,
+                ));
             }
             v.push(act("<< Get more skins! >>", "", Cmd::GetMoreSkins));
             v
@@ -120,10 +195,25 @@ pub fn build(id: MenuId, ctx: &MenuContext) -> Vec<Item> {
             act("&Preferences...", "Ctrl+P", Cmd::Preferences),
             sub("&Skins", build(MenuId::Skins, ctx)),
             Item::Sep,
-            check("Time &elapsed", "(Ctrl+T toggles)", Cmd::ToggleTimeMode, !st.time_remaining),
-            check("Time re&maining", "(Ctrl+T toggles)", Cmd::ToggleTimeMode, st.time_remaining),
+            check(
+                "Time &elapsed",
+                "(Ctrl+T toggles)",
+                Cmd::ToggleTimeMode,
+                !st.time_remaining,
+            ),
+            check(
+                "Time re&maining",
+                "(Ctrl+T toggles)",
+                Cmd::ToggleTimeMode,
+                st.time_remaining,
+            ),
             Item::Sep,
-            check("&Always On Top", "Ctrl+A", Cmd::ToggleAlwaysOnTop, st.always_on_top),
+            check(
+                "&Always On Top",
+                "Ctrl+A",
+                Cmd::ToggleAlwaysOnTop,
+                st.always_on_top,
+            ),
             check("&Double Size", "Ctrl+D", Cmd::ToggleDouble, st.doubled),
             check("&EasyMove", "Ctrl+E", Cmd::ToggleEasyMove, st.easy_move),
             Item::Sep,
@@ -138,7 +228,12 @@ pub fn build(id: MenuId, ctx: &MenuContext) -> Vec<Item> {
             act("&Next", "B", Cmd::Next),
             Item::Sep,
             act("Stop w/ f&adeout", "Shift+V", Cmd::StopFadeout),
-            check("Stop after c&urrent", "Ctrl+V", Cmd::StopAfterCurrent, st.stop_after_current),
+            check(
+                "Stop after c&urrent",
+                "Ctrl+V",
+                Cmd::StopAfterCurrent,
+                st.stop_after_current,
+            ),
             act("&Back 5 seconds", "Left", Cmd::SeekBy(-5.0)),
             act("&Fwd 5 seconds", "Right", Cmd::SeekBy(5.0)),
             act("Start of l&ist", "Ctrl+Z", Cmd::StartOfList),
@@ -150,7 +245,12 @@ pub fn build(id: MenuId, ctx: &MenuContext) -> Vec<Item> {
         MenuId::Vis => vec![
             act("&Visualization options...", "Alt+O", Cmd::VisOptionsDialog),
             Item::Sep,
-            check("&Start/Stop plug-in", "Ctrl+Shift+K", Cmd::ToggleVisPlugin, st.vis_mode != VisMode::Off),
+            check(
+                "&Start/Stop plug-in",
+                "Ctrl+Shift+K",
+                Cmd::ToggleVisPlugin,
+                st.vis_mode != VisMode::Off,
+            ),
             act("&Configure plug-in...", "Alt+K", Cmd::VisOptionsDialog),
             act("S&elect plug-in...", "Ctrl+K", Cmd::VisOptionsDialog),
         ],
@@ -159,7 +259,11 @@ pub fn build(id: MenuId, ctx: &MenuContext) -> Vec<Item> {
                 "&Load",
                 vec![
                     act("&Preset...", "", Cmd::EqLibrary(EqLibOp::LoadPreset)),
-                    act("&Auto-load preset...", "", Cmd::EqLibrary(EqLibOp::LoadAuto)),
+                    act(
+                        "&Auto-load preset...",
+                        "",
+                        Cmd::EqLibrary(EqLibOp::LoadAuto),
+                    ),
                     act("&Default", "", Cmd::EqLibrary(EqLibOp::LoadDefault)),
                     Item::Sep,
                     act("From &EQF...", "", Cmd::EqLoadEqf),
@@ -169,7 +273,11 @@ pub fn build(id: MenuId, ctx: &MenuContext) -> Vec<Item> {
                 "&Save",
                 vec![
                     act("&Preset...", "", Cmd::EqLibrary(EqLibOp::SavePreset)),
-                    act("&Auto-load preset...", "", Cmd::EqLibrary(EqLibOp::SaveAuto)),
+                    act(
+                        "&Auto-load preset...",
+                        "",
+                        Cmd::EqLibrary(EqLibOp::SaveAuto),
+                    ),
                     act("&Default", "", Cmd::EqLibrary(EqLibOp::SaveDefault)),
                     Item::Sep,
                     act("To &EQF...", "", Cmd::EqSaveEqf),
@@ -179,13 +287,15 @@ pub fn build(id: MenuId, ctx: &MenuContext) -> Vec<Item> {
                 "&Delete",
                 vec![
                     act("&Preset...", "", Cmd::EqLibrary(EqLibOp::DeletePreset)),
-                    act("&Auto-load preset...", "", Cmd::EqLibrary(EqLibOp::DeleteAuto)),
+                    act(
+                        "&Auto-load preset...",
+                        "",
+                        Cmd::EqLibrary(EqLibOp::DeleteAuto),
+                    ),
                 ],
             ),
         ],
-        MenuId::PlaylistRemove => vec![
-            act("Remove all &dead files", "", Cmd::PlRemoveDead),
-        ],
+        MenuId::PlaylistRemove => vec![act("Remove all &dead files", "", Cmd::PlRemoveDead)],
         MenuId::PlaylistSort => vec![
             act("Sort list by &title", "", Cmd::PlSortTitle),
             act("Sort list by &filename", "", Cmd::PlSortFilename),
@@ -267,14 +377,24 @@ impl MenuLevel {
         let mut height = 6;
         for it in &items {
             match it {
-                Item::Action { label, hotkey, default, .. } => {
-                    let w = if *default { Weight::Bold } else { Weight::Regular };
+                Item::Action {
+                    label,
+                    hotkey,
+                    default,
+                    ..
+                } => {
+                    let w = if *default {
+                        Weight::Bold
+                    } else {
+                        Weight::Regular
+                    };
                     label_w = label_w.max(fonts.measure(&mnemonic(label).0, FONT_PX, w));
                     key_w = key_w.max(fonts.measure(hotkey, FONT_PX, Weight::Regular));
                     height += ITEM_H;
                 }
                 Item::Sub { label, .. } => {
-                    label_w = label_w.max(fonts.measure(&mnemonic(label).0, FONT_PX, Weight::Regular));
+                    label_w =
+                        label_w.max(fonts.measure(&mnemonic(label).0, FONT_PX, Weight::Regular));
                     has_sub = true;
                     height += ITEM_H;
                 }
@@ -288,13 +408,23 @@ impl MenuLevel {
         if has_sub || key_w == 0 {
             width += 4;
         }
-        MenuLevel { items, hover: None, width: width.max(80), height, label_w }
+        MenuLevel {
+            items,
+            hover: None,
+            width: width.max(80),
+            height,
+            label_w,
+        }
     }
 
     pub fn item_rect(&self, i: usize) -> Rect {
         let mut y = 3;
         for (j, it) in self.items.iter().enumerate() {
-            let h = if matches!(it, Item::Sep) { SEP_H } else { ITEM_H };
+            let h = if matches!(it, Item::Sep) {
+                SEP_H
+            } else {
+                ITEM_H
+            };
             if j == i {
                 return Rect::new(3, y, self.width - 6, h);
             }
@@ -304,7 +434,8 @@ impl MenuLevel {
     }
 
     pub fn hit(&self, x: i32, y: i32) -> Option<usize> {
-        (0..self.items.len()).find(|&i| self.item_rect(i).contains(x, y) && !matches!(self.items[i], Item::Sep))
+        (0..self.items.len())
+            .find(|&i| self.item_rect(i).contains(x, y) && !matches!(self.items[i], Item::Sep))
     }
 
     pub fn render(&self, fonts: &Fonts, out: &mut Bitmap) {
@@ -326,9 +457,18 @@ impl MenuLevel {
                     out.hline(r.x + 1, r.y + 3, r.w - 2, SHADOW);
                     out.hline(r.x + 1, r.y + 4, r.w - 2, HILITE);
                 }
-                Item::Action { label, hotkey, checked, enabled, default, .. } => {
+                Item::Action {
+                    label,
+                    hotkey,
+                    checked,
+                    enabled,
+                    default,
+                    ..
+                } => {
                     let hot = self.hover == Some(i);
-                    self.draw_row(fonts, out, r, label, hotkey, *checked, *enabled, *default, hot, false);
+                    self.draw_row(
+                        fonts, out, r, label, hotkey, *checked, *enabled, *default, hot, false,
+                    );
                 }
                 Item::Sub { label, enabled, .. } => {
                     let hot = self.hover == Some(i);
@@ -339,7 +479,19 @@ impl MenuLevel {
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn draw_row(&self, fonts: &Fonts, out: &mut Bitmap, r: Rect, label: &str, hotkey: &str, checked: bool, enabled: bool, default: bool, hot: bool, arrow: bool) {
+    fn draw_row(
+        &self,
+        fonts: &Fonts,
+        out: &mut Bitmap,
+        r: Rect,
+        label: &str,
+        hotkey: &str,
+        checked: bool,
+        enabled: bool,
+        default: bool,
+        hot: bool,
+        arrow: bool,
+    ) {
         if hot && enabled {
             out.fill_rect(r.x, r.y, r.w, r.h, SELECT_BG);
         }
@@ -351,7 +503,11 @@ impl MenuLevel {
             TEXT
         };
         let ty = r.y + 2;
-        let weight = if default { Weight::Bold } else { Weight::Regular };
+        let weight = if default {
+            Weight::Bold
+        } else {
+            Weight::Regular
+        };
         let clip = r;
         let draw = |out: &mut Bitmap, text: &str, x: i32, c: u32, wgt: Weight| {
             fonts.draw(out, text, x, ty, FONT_PX, wgt, c, clip, true);
@@ -402,7 +558,11 @@ pub const BUILTIN_PRESETS: &[(&str, u8, [u8; 10])] = &[
     ("Classical", 31, [31, 31, 31, 31, 31, 31, 44, 44, 44, 48]),
     ("Club", 31, [31, 31, 26, 22, 22, 22, 26, 31, 31, 31]),
     ("Dance", 31, [16, 20, 28, 32, 32, 42, 44, 44, 32, 32]),
-    ("Laptop speakers/headphones", 31, [24, 14, 23, 38, 36, 29, 24, 16, 11, 8]),
+    (
+        "Laptop speakers/headphones",
+        31,
+        [24, 14, 23, 38, 36, 29, 24, 16, 11, 8],
+    ),
     ("Large hall", 31, [15, 15, 22, 22, 31, 40, 40, 40, 31, 31]),
     ("Party", 31, [20, 20, 31, 31, 31, 31, 31, 31, 20, 20]),
     ("Pop", 31, [35, 24, 20, 19, 23, 34, 36, 36, 35, 35]),
@@ -413,7 +573,11 @@ pub const BUILTIN_PRESETS: &[(&str, u8, [u8; 10])] = &[
     ("Full Bass", 31, [16, 16, 16, 22, 29, 39, 46, 49, 50, 50]),
     ("Soft Rock", 31, [25, 25, 28, 33, 39, 41, 38, 33, 27, 17]),
     ("Full Treble", 31, [48, 48, 48, 39, 27, 14, 6, 6, 6, 4]),
-    ("Full Bass & Treble", 31, [20, 22, 31, 44, 40, 29, 18, 14, 12, 12]),
+    (
+        "Full Bass & Treble",
+        31,
+        [20, 22, 31, 44, 40, 29, 18, 14, 12, 12],
+    ),
     ("Live", 31, [40, 31, 25, 23, 22, 22, 25, 27, 27, 28]),
     ("Techno", 31, [19, 22, 31, 41, 40, 31, 19, 16, 16, 17]),
 ];
@@ -432,7 +596,11 @@ mod tests {
     #[test]
     fn layout_and_hit() {
         let fonts = Fonts::new();
-        let items = vec![act("Play", "X", Cmd::Play), Item::Sep, act("Stop", "V", Cmd::Stop)];
+        let items = vec![
+            act("Play", "X", Cmd::Play),
+            Item::Sep,
+            act("Stop", "V", Cmd::Stop),
+        ];
         let m = MenuLevel::new(items, &fonts);
         assert_eq!(m.height, 6 + ITEM_H * 2 + SEP_H);
         assert_eq!(m.hit(10, 5), Some(0));

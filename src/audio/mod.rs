@@ -82,7 +82,13 @@ pub enum Status {
 #[derive(Debug)]
 pub enum Event {
     /// The track opened; values are what the display shows.
-    Opened { duration: Option<f64>, kbps: u32, khz: u32, channels: u32, stream_name: Option<String> },
+    Opened {
+        duration: Option<f64>,
+        kbps: u32,
+        khz: u32,
+        channels: u32,
+        stream_name: Option<String>,
+    },
     Error(String),
     StreamTitle(String),
 }
@@ -92,7 +98,7 @@ pub struct Shared {
     pub volume: AtomicU32,  // f32 bits, 0..1
     pub balance: AtomicU32, // f32 bits, -1..1
     paused: AtomicBool,
-    consumed: AtomicU64,     // frames taken from the ring by the callback
+    consumed: AtomicU64,      // frames taken from the ring by the callback
     discard_until: AtomicU64, // frames below this index are dropped (after seek/stop)
     pub kbps: AtomicU32,
     vis: Mutex<VecDeque<f32>>,
@@ -205,13 +211,16 @@ impl Engine {
         if std::env::var_os("FERRAMP_NULL_AUDIO").is_some() {
             let rate = 48000;
             self.shared.out_rate.store(rate, Ordering::Relaxed);
-            let (prod, cons) = rtrb::RingBuffer::<[f32; 2]>::new((rate as f64 * RING_SECONDS) as usize);
+            let (prod, cons) =
+                rtrb::RingBuffer::<[f32; 2]>::new((rate as f64 * RING_SECONDS) as usize);
             *self.producer.lock().unwrap() = Some(prod);
             start_null_output(rate, cons, self.shared.clone(), self.quit.clone());
             return Err("null output".into());
         }
         let host = cpal::default_host();
-        let device = host.default_output_device().ok_or("no audio output device")?;
+        let device = host
+            .default_output_device()
+            .ok_or("no audio output device")?;
         let supported = device.default_output_config().map_err(|e| e.to_string())?;
         let rate = supported.sample_rate();
         let channels = supported.channels() as usize;
@@ -223,11 +232,21 @@ impl Engine {
         let shared = self.shared.clone();
         let format = supported.sample_format();
         let stream = match format {
-            cpal::SampleFormat::F32 => build_stream::<f32>(&device, &config, channels, cons, shared),
-            cpal::SampleFormat::I16 => build_stream::<i16>(&device, &config, channels, cons, shared),
-            cpal::SampleFormat::U16 => build_stream::<u16>(&device, &config, channels, cons, shared),
-            cpal::SampleFormat::I32 => build_stream::<i32>(&device, &config, channels, cons, shared),
-            cpal::SampleFormat::F64 => build_stream::<f64>(&device, &config, channels, cons, shared),
+            cpal::SampleFormat::F32 => {
+                build_stream::<f32>(&device, &config, channels, cons, shared)
+            }
+            cpal::SampleFormat::I16 => {
+                build_stream::<i16>(&device, &config, channels, cons, shared)
+            }
+            cpal::SampleFormat::U16 => {
+                build_stream::<u16>(&device, &config, channels, cons, shared)
+            }
+            cpal::SampleFormat::I32 => {
+                build_stream::<i32>(&device, &config, channels, cons, shared)
+            }
+            cpal::SampleFormat::F64 => {
+                build_stream::<f64>(&device, &config, channels, cons, shared)
+            }
             other => return Err(format!("unsupported sample format {other}")),
         }?;
         stream.play().map_err(|e| e.to_string())?;
@@ -249,11 +268,15 @@ impl Engine {
     }
 
     pub fn set_volume(&self, v: f32) {
-        self.shared.volume.store(v.clamp(0.0, 1.0).to_bits(), Ordering::Relaxed);
+        self.shared
+            .volume
+            .store(v.clamp(0.0, 1.0).to_bits(), Ordering::Relaxed);
     }
 
     pub fn set_balance(&self, b: f32) {
-        self.shared.balance.store(b.clamp(-1.0, 1.0).to_bits(), Ordering::Relaxed);
+        self.shared
+            .balance
+            .store(b.clamp(-1.0, 1.0).to_bits(), Ordering::Relaxed);
     }
 
     pub fn set_eq(&self, eq: EqSettings) {
@@ -266,9 +289,15 @@ impl Engine {
         self.generation += 1;
         let start_frame = self.pushed.load(Ordering::SeqCst);
         // Drop whatever is still queued from the previous track.
-        self.shared.discard_until.store(start_frame, Ordering::SeqCst);
-        *self.shared.timeline.lock().unwrap() =
-            Timeline { base_frame: start_frame, base_time: 0.0, end_frame: None, generation: self.generation };
+        self.shared
+            .discard_until
+            .store(start_frame, Ordering::SeqCst);
+        *self.shared.timeline.lock().unwrap() = Timeline {
+            base_frame: start_frame,
+            base_time: 0.0,
+            end_frame: None,
+            generation: self.generation,
+        };
         self.shared.kbps.store(0, Ordering::Relaxed);
         self.shared.paused.store(false, Ordering::SeqCst);
         let (cmd_tx, cmd_rx) = mpsc::channel();
@@ -286,7 +315,10 @@ impl Engine {
             .name("decoder".into())
             .spawn(move || decode_thread(ctx))
             .ok();
-        self.current = Some(Decoding { cmd: cmd_tx, thread });
+        self.current = Some(Decoding {
+            cmd: cmd_tx,
+            thread,
+        });
         self.status = Status::Playing;
     }
 
@@ -471,10 +503,14 @@ fn build_stream<T>(
 where
     T: cpal::SizedSample + cpal::FromSample<f32>,
 {
-    let mut mixer = Mixer { cons, shared, tap: Vec::with_capacity(8192) };
+    let mut mixer = Mixer {
+        cons,
+        shared,
+        tap: Vec::with_capacity(8192),
+    };
     device
         .build_output_stream(
-            config.clone(),
+            *config,
             move |data: &mut [T], _: &cpal::OutputCallbackInfo| mixer.render(data, channels),
             |e| eprintln!("audio stream error: {e}"),
             None,
@@ -484,20 +520,31 @@ where
 
 /// A silent output that consumes audio in real time (FERRAMP_NULL_AUDIO=1),
 /// used for automated tests without sound.
-fn start_null_output(rate: u32, cons: rtrb::Consumer<[f32; 2]>, shared: Arc<Shared>, quit: Arc<AtomicBool>) {
-    let mut mixer = Mixer { cons, shared, tap: Vec::with_capacity(8192) };
-    let _ = std::thread::Builder::new().name("null-audio".into()).spawn(move || {
-        let start = std::time::Instant::now();
-        let mut done: u64 = 0;
-        let mut buf = vec![0f32; 2 * 4096];
-        while !quit.load(Ordering::Relaxed) {
-            std::thread::sleep(Duration::from_millis(10));
-            let due = (start.elapsed().as_secs_f64() * rate as f64) as u64;
-            let n = (due - done).min(4096) as usize;
-            mixer.render(&mut buf[..n * 2], 2);
-            done += n as u64;
-        }
-    });
+fn start_null_output(
+    rate: u32,
+    cons: rtrb::Consumer<[f32; 2]>,
+    shared: Arc<Shared>,
+    quit: Arc<AtomicBool>,
+) {
+    let mut mixer = Mixer {
+        cons,
+        shared,
+        tap: Vec::with_capacity(8192),
+    };
+    let _ = std::thread::Builder::new()
+        .name("null-audio".into())
+        .spawn(move || {
+            let start = std::time::Instant::now();
+            let mut done: u64 = 0;
+            let mut buf = vec![0f32; 2 * 4096];
+            while !quit.load(Ordering::Relaxed) {
+                std::thread::sleep(Duration::from_millis(10));
+                let due = (start.elapsed().as_secs_f64() * rate as f64) as u64;
+                let n = (due - done).min(4096) as usize;
+                mixer.render(&mut buf[..n * 2], 2);
+                done += n as u64;
+            }
+        });
 }
 
 struct DecodeCtx {
@@ -543,14 +590,30 @@ fn decode(ctx: &DecodeCtx) -> Result<(), String> {
             }
             stream_name = opened.name;
             stream_kbps = opened.bitrate;
-            MediaSourceStream::new(Box::new(ReadOnlySource::new(opened.reader)), Default::default())
+            MediaSourceStream::new(
+                Box::new(ReadOnlySource::new(opened.reader)),
+                Default::default(),
+            )
         }
     };
     let mut format = symphonia::default::get_probe()
-        .probe(&hint, mss, FormatOptions::default(), MetadataOptions::default())
+        .probe(
+            &hint,
+            mss,
+            FormatOptions::default(),
+            MetadataOptions::default(),
+        )
         .map_err(|e| format!("unsupported or unreadable file ({e})"))?;
-    let track = format.default_track(TrackType::Audio).ok_or("no audio track")?.clone();
-    let params = track.codec_params.as_ref().and_then(|p| p.audio()).ok_or("no audio parameters")?.clone();
+    let track = format
+        .default_track(TrackType::Audio)
+        .ok_or("no audio track")?
+        .clone();
+    let params = track
+        .codec_params
+        .as_ref()
+        .and_then(|p| p.audio())
+        .ok_or("no audio parameters")?
+        .clone();
     let mut decoder = symphonia::default::get_codecs()
         .make_audio_decoder(&params, &AudioDecoderOptions::default())
         .map_err(|e| format!("unsupported codec ({e})"))?;
@@ -567,9 +630,9 @@ fn decode(ctx: &DecodeCtx) -> Result<(), String> {
         },
     };
     let file_kbps = match (&ctx.source, duration) {
-        (Source::File(p), Some(d)) if d > 0.0 => {
-            std::fs::metadata(p).ok().map(|m| ((m.len() as f64 * 8.0) / d / 1000.0).round() as u32)
-        }
+        (Source::File(p), Some(d)) if d > 0.0 => std::fs::metadata(p)
+            .ok()
+            .map(|m| ((m.len() as f64 * 8.0) / d / 1000.0).round() as u32),
         _ => None,
     };
     let initial_kbps = stream_kbps.or(file_kbps).unwrap_or(0);
@@ -602,7 +665,10 @@ fn decode(ctx: &DecodeCtx) -> Result<(), String> {
         match cmd {
             Ok(Cmd::Stop) | Err(mpsc::TryRecvError::Disconnected) => return Ok(()),
             Ok(Cmd::Seek(secs)) => {
-                let to = SeekTo::Time { time: Time::try_from_secs_f64(secs).unwrap_or(Time::ZERO), track_id: Some(track.id) };
+                let to = SeekTo::Time {
+                    time: Time::try_from_secs_f64(secs).unwrap_or(Time::ZERO),
+                    track_id: Some(track.id),
+                };
                 if let Ok(seeked) = format.seek(SeekMode::Accurate, to) {
                     decoder.reset();
                     resampler.reset();
@@ -642,7 +708,10 @@ fn decode(ctx: &DecodeCtx) -> Result<(), String> {
             continue;
         }
         let pkt_bytes = packet.data.len();
-        let pkt_secs = tb.and_then(|tb| tb.calc_duration(packet.dur)).map(|t| t.as_secs_f64()).unwrap_or(0.0);
+        let pkt_secs = tb
+            .and_then(|tb| tb.calc_duration(packet.dur))
+            .map(|t| t.as_secs_f64())
+            .unwrap_or(0.0);
         let buf = match decoder.decode(&packet) {
             Ok(b) => b,
             Err(SymError::DecodeError(_)) => continue,
@@ -665,7 +734,10 @@ fn decode(ctx: &DecodeCtx) -> Result<(), String> {
             }
             let bytes: usize = bits_window.iter().map(|x| x.1).sum();
             if total_t > 0.2 {
-                ctx.shared.kbps.store(((bytes as f64 * 8.0) / total_t / 1000.0).round() as u32, Ordering::Relaxed);
+                ctx.shared.kbps.store(
+                    ((bytes as f64 * 8.0) / total_t / 1000.0).round() as u32,
+                    Ordering::Relaxed,
+                );
             }
         }
         out.clear();
@@ -710,7 +782,9 @@ fn push_all(ctx: &DecodeCtx, frames: &[[f32; 2]]) -> Result<bool, String> {
     while i < frames.len() {
         {
             let mut guard = ctx.producer.lock().unwrap();
-            let Some(prod) = guard.as_mut() else { return Err("audio device unavailable".into()) };
+            let Some(prod) = guard.as_mut() else {
+                return Err("audio device unavailable".into());
+            };
             while i < frames.len() {
                 if prod.push(frames[i]).is_err() {
                     break;

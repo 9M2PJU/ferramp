@@ -72,7 +72,14 @@ impl Fonts {
                 advance,
                 coverage: img.data,
             },
-            None => Glyph { left: 0, top: 0, width: 0, height: 0, advance, coverage: vec![] },
+            None => Glyph {
+                left: 0,
+                top: 0,
+                width: 0,
+                height: 0,
+                advance,
+                coverage: vec![],
+            },
         };
         let g = std::rc::Rc::new(g);
         self.cache.borrow_mut().insert(key, g.clone());
@@ -99,7 +106,18 @@ impl Fonts {
     /// Draw `text` with its top-left at (x, y). Glyphs are snapped to whole
     /// pixels; `crisp` renders without anti-aliasing (classic GDI look).
     #[allow(clippy::too_many_arguments)]
-    pub fn draw(&self, dst: &mut Bitmap, text: &str, x: i32, y: i32, px: f32, w: Weight, color: u32, clip: Rect, crisp: bool) -> i32 {
+    pub fn draw(
+        &self,
+        dst: &mut Bitmap,
+        text: &str,
+        x: i32,
+        y: i32,
+        px: f32,
+        w: Weight,
+        color: u32,
+        clip: Rect,
+        crisp: bool,
+    ) -> i32 {
         let baseline = y + self.ascent(px, w);
         let mut pen = x as f32;
         for c in text.chars() {
@@ -109,8 +127,8 @@ impl Fonts {
             for row in 0..g.height {
                 for col in 0..g.width {
                     let a = g.coverage[(row * g.width + col) as usize];
-                    let tx = gx + col as i32;
-                    let ty = gy + row as i32;
+                    let tx = gx + col;
+                    let ty = gy + row;
                     if !clip.contains(tx, ty) || tx < 0 || ty < 0 || tx >= dst.w || ty >= dst.h {
                         continue;
                     }
@@ -169,9 +187,24 @@ mod tests {
         let w = f.measure("Hello", 11.0, Weight::Regular);
         assert!(w > 15 && w < 40, "{w}");
         let mut b = Bitmap::new(60, 20, rgb(0, 0, 0));
-        f.draw(&mut b, "Hi", 2, 2, 11.0, Weight::Regular, rgb(255, 255, 255), Rect::new(0, 0, 60, 20), true);
+        f.draw(
+            &mut b,
+            "Hi",
+            2,
+            2,
+            11.0,
+            Weight::Regular,
+            rgb(255, 255, 255),
+            Rect::new(0, 0, 60, 20),
+            true,
+        );
         assert!(b.px.iter().any(|&p| p == rgb(255, 255, 255)));
-        let e = f.ellipsize("A very long playlist title indeed", 11.0, Weight::Regular, 60);
+        let e = f.ellipsize(
+            "A very long playlist title indeed",
+            11.0,
+            Weight::Regular,
+            60,
+        );
         assert!(e.ends_with("...") && f.measure(&e, 11.0, Weight::Regular) <= 60);
     }
 }

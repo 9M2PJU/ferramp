@@ -11,7 +11,9 @@ pub fn config_dir() -> PathBuf {
     {
         return PathBuf::from(d);
     }
-    dirs::config_dir().unwrap_or_else(|| PathBuf::from(".")).join("ferramp")
+    dirs::config_dir()
+        .unwrap_or_else(|| PathBuf::from("."))
+        .join("ferramp")
 }
 
 pub fn skins_dir() -> PathBuf {
@@ -55,15 +57,24 @@ impl Settings {
     }
 
     pub fn get_i32(&self, k: &str, default: i32) -> i32 {
-        self.values.get(k).and_then(|v| v.parse().ok()).unwrap_or(default)
+        self.values
+            .get(k)
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(default)
     }
 
     pub fn get_bool(&self, k: &str, default: bool) -> bool {
-        self.values.get(k).map(|v| v == "1" || v.eq_ignore_ascii_case("true")).unwrap_or(default)
+        self.values
+            .get(k)
+            .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+            .unwrap_or(default)
     }
 
     pub fn get_str(&self, k: &str) -> Option<&str> {
-        self.values.get(k).map(|s| s.as_str()).filter(|s| !s.is_empty())
+        self.values
+            .get(k)
+            .map(|s| s.as_str())
+            .filter(|s| !s.is_empty())
     }
 
     pub fn set(&mut self, k: &str, v: impl ToString) {
@@ -75,7 +86,10 @@ impl Settings {
     }
 
     pub fn eq(&self) -> EqSettings {
-        let mut e = EqSettings { enabled: self.get_bool("eq_enabled", false), ..Default::default() };
+        let mut e = EqSettings {
+            enabled: self.get_bool("eq_enabled", false),
+            ..Default::default()
+        };
         e.preamp = self.get_i32("eq_preamp", 31).clamp(0, 63) as u8;
         if let Some(b) = self.get_str("eq_bands") {
             for (i, v) in b.split(',').take(10).enumerate() {
@@ -90,7 +104,14 @@ impl Settings {
     pub fn set_eq(&mut self, e: &EqSettings) {
         self.set_bool("eq_enabled", e.enabled);
         self.set("eq_preamp", e.preamp);
-        self.set("eq_bands", e.bands.iter().map(|b| b.to_string()).collect::<Vec<_>>().join(","));
+        self.set(
+            "eq_bands",
+            e.bands
+                .iter()
+                .map(|b| b.to_string())
+                .collect::<Vec<_>>()
+                .join(","),
+        );
     }
 }
 

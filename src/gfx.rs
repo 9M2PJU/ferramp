@@ -20,15 +20,25 @@ impl Bitmap {
     pub fn new(w: i32, h: i32, fill: u32) -> Bitmap {
         let w = w.max(0);
         let h = h.max(0);
-        Bitmap { w, h, px: vec![fill; (w * h) as usize] }
+        Bitmap {
+            w,
+            h,
+            px: vec![fill; (w * h) as usize],
+        }
     }
 
     pub fn from_rgba8(w: u32, h: u32, data: &[u8]) -> Bitmap {
         let mut px = Vec::with_capacity((w * h) as usize);
-        for c in data.chunks_exact(4) {
-            px.push(((c[3] as u32) << 24) | ((c[0] as u32) << 16) | ((c[1] as u32) << 8) | c[2] as u32);
+        for c in data.as_chunks::<4>().0 {
+            px.push(
+                ((c[3] as u32) << 24) | ((c[0] as u32) << 16) | ((c[1] as u32) << 8) | c[2] as u32,
+            );
         }
-        Bitmap { w: w as i32, h: h as i32, px }
+        Bitmap {
+            w: w as i32,
+            h: h as i32,
+            px,
+        }
     }
 
     #[inline]
@@ -146,7 +156,11 @@ impl Bitmap {
             let row = &self.px[(sy * self.w) as usize..((sy + 1) * self.w) as usize];
             for (ox, d) in dst.iter_mut().enumerate() {
                 let sx = ox / scale;
-                *d = if sx < row.len() { row[sx] & 0x00FF_FFFF } else { 0 };
+                *d = if sx < row.len() {
+                    row[sx] & 0x00FF_FFFF
+                } else {
+                    0
+                };
             }
         }
     }

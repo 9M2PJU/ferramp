@@ -35,7 +35,11 @@ impl Entry {
 /// Remove line breaks and other control characters (tags and stream
 /// headers are untrusted and titles end up in playlist files).
 pub fn clean_title(t: &str) -> String {
-    t.chars().map(|c| if c.is_control() { ' ' } else { c }).collect::<String>().trim().to_string()
+    t.chars()
+        .map(|c| if c.is_control() { ' ' } else { c })
+        .collect::<String>()
+        .trim()
+        .to_string()
 }
 
 pub fn default_title(source: &Source) -> String {
@@ -69,7 +73,10 @@ impl Playlist {
             .duration_since(std::time::UNIX_EPOCH)
             .map(|d| d.as_nanos() as u64)
             .unwrap_or(0x9E37_79B9);
-        Playlist { rng: seed | 1, ..Default::default() }
+        Playlist {
+            rng: seed | 1,
+            ..Default::default()
+        }
     }
 
     pub fn len(&self) -> usize {
@@ -90,7 +97,12 @@ impl Playlist {
         x.wrapping_mul(0x2545_F491_4F6C_DD1D)
     }
 
-    fn make_entry(&mut self, source: Source, title: Option<String>, duration: Option<f64>) -> Entry {
+    fn make_entry(
+        &mut self,
+        source: Source,
+        title: Option<String>,
+        duration: Option<f64>,
+    ) -> Entry {
         self.next_id += 1;
         let has_info = title.is_some();
         Entry {
@@ -104,9 +116,16 @@ impl Playlist {
     }
 
     /// Insert entries at `at` (clamped). Returns the ids of the new entries.
-    pub fn insert(&mut self, at: usize, items: Vec<(Source, Option<String>, Option<f64>)>) -> Vec<u64> {
+    pub fn insert(
+        &mut self,
+        at: usize,
+        items: Vec<(Source, Option<String>, Option<f64>)>,
+    ) -> Vec<u64> {
         let at = at.min(self.entries.len());
-        let new: Vec<Entry> = items.into_iter().map(|(s, t, d)| self.make_entry(s, t, d)).collect();
+        let new: Vec<Entry> = items
+            .into_iter()
+            .map(|(s, t, d)| self.make_entry(s, t, d))
+            .collect();
         let ids = new.iter().map(|e| e.id).collect();
         let n = new.len();
         self.entries.splice(at..at, new);
@@ -191,7 +210,9 @@ impl Playlist {
     }
 
     pub fn invert_selection(&mut self) {
-        self.entries.iter_mut().for_each(|e| e.selected = !e.selected);
+        self.entries
+            .iter_mut()
+            .for_each(|e| e.selected = !e.selected);
     }
 
     pub fn selected_count(&self) -> usize {
@@ -229,7 +250,9 @@ impl Playlist {
     /// Move the selected entries by `delta` rows, keeping their relative order.
     /// Returns the delta actually applied.
     pub fn move_selected(&mut self, delta: isize) -> isize {
-        let sel: Vec<usize> = (0..self.entries.len()).filter(|&i| self.entries[i].selected).collect();
+        let sel: Vec<usize> = (0..self.entries.len())
+            .filter(|&i| self.entries[i].selected)
+            .collect();
         if sel.is_empty() || delta == 0 {
             return 0;
         }
@@ -290,7 +313,10 @@ impl Playlist {
     pub fn sort_by_filename(&mut self) {
         self.reorder(|v| {
             v.sort_by_cached_key(|e| match &e.source {
-                Source::File(p) => p.file_name().map(|n| n.to_string_lossy().to_lowercase()).unwrap_or_default(),
+                Source::File(p) => p
+                    .file_name()
+                    .map(|n| n.to_string_lossy().to_lowercase())
+                    .unwrap_or_default(),
                 Source::Url(u) => u.to_lowercase(),
             })
         });
@@ -420,7 +446,10 @@ impl Playlist {
             s.push_str(&format!("#EXTINF:{},{}\n", secs, clean_title(&e.title)));
             match &e.source {
                 Source::File(p) => {
-                    let rel = p.strip_prefix(&base).map(|r| r.to_path_buf()).unwrap_or_else(|_| p.clone());
+                    let rel = p
+                        .strip_prefix(&base)
+                        .map(|r| r.to_path_buf())
+                        .unwrap_or_else(|_| p.clone());
                     s.push_str(&rel.to_string_lossy());
                 }
                 Source::Url(u) => s.push_str(&clean_title(u)),
@@ -436,20 +465,37 @@ impl Playlist {
             let n = i + 1;
             s.push_str(&format!("File{n}={}\n", clean_title(&e.location())));
             s.push_str(&format!("Title{n}={}\n", clean_title(&e.title)));
-            s.push_str(&format!("Length{n}={}\n", e.duration.map(|d| d.round() as i64).unwrap_or(-1)));
+            s.push_str(&format!(
+                "Length{n}={}\n",
+                e.duration.map(|d| d.round() as i64).unwrap_or(-1)
+            ));
         }
-        s.push_str(&format!("NumberOfEntries={}\nVersion=2\n", self.entries.len()));
+        s.push_str(&format!(
+            "NumberOfEntries={}\nVersion=2\n",
+            self.entries.len()
+        ));
         std::fs::write(path, s)
     }
 }
 
 /// Read an M3U/M3U8/PLS file into (source, title, duration) items.
 pub fn load_playlist_file(path: &Path) -> Vec<(Source, Option<String>, Option<f64>)> {
-    let Ok(bytes) = std::fs::read(path) else { return vec![] };
+    let Ok(bytes) = std::fs::read(path) else {
+        return vec![];
+    };
     let text = crate::skin::decode_text(&bytes);
     let base = path.parent().map(|p| p.to_path_buf()).unwrap_or_default();
-    let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("").to_ascii_lowercase();
-    if ext == "pls" || text.trim_start().to_ascii_lowercase().starts_with("[playlist]") {
+    let ext = path
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("")
+        .to_ascii_lowercase();
+    if ext == "pls"
+        || text
+            .trim_start()
+            .to_ascii_lowercase()
+            .starts_with("[playlist]")
+    {
         parse_pls(&text, &base)
     } else {
         parse_m3u(&text, &base)
@@ -478,7 +524,11 @@ pub fn parse_m3u(text: &str, base: &Path) -> Vec<(Source, Option<String>, Option
         }
         if let Some(rest) = line.strip_prefix("#EXTINF:") {
             let (dur, title) = rest.split_once(',').unwrap_or((rest, ""));
-            let d = dur.trim().split_whitespace().next().and_then(|v| v.parse::<f64>().ok()).filter(|v| *v >= 0.0);
+            let d = dur
+                .split_whitespace()
+                .next()
+                .and_then(|v| v.parse::<f64>().ok())
+                .filter(|v| *v >= 0.0);
             let t = Some(title.trim().to_string()).filter(|t| !t.is_empty());
             pending = Some((d, t));
             continue;
@@ -494,15 +544,25 @@ pub fn parse_m3u(text: &str, base: &Path) -> Vec<(Source, Option<String>, Option
 
 pub fn parse_pls(text: &str, base: &Path) -> Vec<(Source, Option<String>, Option<f64>)> {
     let ini = crate::skin::parse_ini(text);
-    let Some(sec) = ini.get("playlist") else { return vec![] };
-    let mut idx: Vec<usize> =
-        sec.keys().filter_map(|k| k.strip_prefix("file").and_then(|n| n.parse().ok())).collect();
+    let Some(sec) = ini.get("playlist") else {
+        return vec![];
+    };
+    let mut idx: Vec<usize> = sec
+        .keys()
+        .filter_map(|k| k.strip_prefix("file").and_then(|n| n.parse().ok()))
+        .collect();
     idx.sort_unstable();
     idx.into_iter()
         .filter_map(|n| {
             let loc = sec.get(&format!("file{n}"))?;
-            let title = sec.get(&format!("title{n}")).cloned().filter(|t| !t.is_empty());
-            let dur = sec.get(&format!("length{n}")).and_then(|v| v.parse::<f64>().ok()).filter(|v| *v >= 0.0);
+            let title = sec
+                .get(&format!("title{n}"))
+                .cloned()
+                .filter(|t| !t.is_empty());
+            let dur = sec
+                .get(&format!("length{n}"))
+                .and_then(|v| v.parse::<f64>().ok())
+                .filter(|v| *v >= 0.0);
             Some((resolve(loc, base), title, dur))
         })
         .collect()
@@ -519,7 +579,16 @@ mod tests {
     use super::*;
 
     fn files(names: &[&str]) -> Vec<(Source, Option<String>, Option<f64>)> {
-        names.iter().map(|n| (Source::File(PathBuf::from(format!("/m/{n}.mp3"))), None, Some(10.0))).collect()
+        names
+            .iter()
+            .map(|n| {
+                (
+                    Source::File(PathBuf::from(format!("/m/{n}.mp3"))),
+                    None,
+                    Some(10.0),
+                )
+            })
+            .collect()
     }
 
     fn titles(p: &Playlist) -> Vec<String> {
@@ -588,13 +657,20 @@ mod tests {
 
     #[test]
     fn m3u_and_pls_round_trip() {
-        let m3u = "#EXTM3U\n#EXTINF:123,Artist - Song\nsongs\\one.mp3\nhttp://radio.example/stream\n";
+        let m3u =
+            "#EXTM3U\n#EXTINF:123,Artist - Song\nsongs\\one.mp3\nhttp://radio.example/stream\n";
         let items = parse_m3u(m3u, Path::new("/music"));
         assert_eq!(items.len(), 2);
-        assert_eq!(items[0].0, Source::File(PathBuf::from("/music/songs/one.mp3")));
+        assert_eq!(
+            items[0].0,
+            Source::File(PathBuf::from("/music/songs/one.mp3"))
+        );
         assert_eq!(items[0].1.as_deref(), Some("Artist - Song"));
         assert_eq!(items[0].2, Some(123.0));
-        assert_eq!(items[1].0, Source::Url("http://radio.example/stream".into()));
+        assert_eq!(
+            items[1].0,
+            Source::Url("http://radio.example/stream".into())
+        );
 
         let pls = "[playlist]\nFile1=/a.mp3\nTitle1=A\nLength1=5\nFile2=b.ogg\nNumberOfEntries=2\n";
         let items = parse_pls(pls, Path::new("/x"));
@@ -606,7 +682,11 @@ mod tests {
     fn titles_are_single_line() {
         assert_eq!(clean_title("a\r\nhttp://evil\tb"), "a  http://evil b");
         let mut p = Playlist::new();
-        p.append(vec![(Source::File(PathBuf::from("/x.mp3")), Some("A\nB".into()), None)]);
+        p.append(vec![(
+            Source::File(PathBuf::from("/x.mp3")),
+            Some("A\nB".into()),
+            None,
+        )]);
         assert_eq!(p.entries[0].title, "A B");
     }
 

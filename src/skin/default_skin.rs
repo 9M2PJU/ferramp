@@ -87,7 +87,13 @@ fn sunken(b: &mut Bitmap, x: i32, y: i32, w: i32, h: i32, fill: u32) {
 }
 
 fn lerp(a: u32, b: u32, t: f32) -> u32 {
-    let ch = |s: u32| -> [f32; 3] { [((s >> 16) & 255) as f32, ((s >> 8) & 255) as f32, (s & 255) as f32] };
+    let ch = |s: u32| -> [f32; 3] {
+        [
+            ((s >> 16) & 255) as f32,
+            ((s >> 8) & 255) as f32,
+            (s & 255) as f32,
+        ]
+    };
     let (ca, cb) = (ch(a), ch(b));
     let m = |i: usize| (ca[i] + (cb[i] - ca[i]) * t).round().clamp(0.0, 255.0) as u8;
     rgb(m(0), m(1), m(2))
@@ -95,7 +101,11 @@ fn lerp(a: u32, b: u32, t: f32) -> u32 {
 
 fn vgradient(b: &mut Bitmap, x: i32, y: i32, w: i32, h: i32, top: u32, bottom: u32) {
     for i in 0..h {
-        let t = if h > 1 { i as f32 / (h - 1) as f32 } else { 0.0 };
+        let t = if h > 1 {
+            i as f32 / (h - 1) as f32
+        } else {
+            0.0
+        };
         b.hline(x, y + i, w, lerp(top, bottom, t));
     }
 }
@@ -103,7 +113,11 @@ fn vgradient(b: &mut Bitmap, x: i32, y: i32, w: i32, h: i32, top: u32, bottom: u
 /// Fine horizontal grain on the window body.
 fn body_texture(b: &mut Bitmap, x: i32, y: i32, w: i32, h: i32) {
     for yy in 0..h {
-        let c = if yy % 2 == 0 { BODY } else { lerp(BODY, BODY_LO, 0.12) };
+        let c = if yy % 2 == 0 {
+            BODY
+        } else {
+            lerp(BODY, BODY_LO, 0.12)
+        };
         b.hline(x, y + yy, w, c);
     }
 }
@@ -247,7 +261,10 @@ fn text_bmp() -> Bitmap {
     for (i, ch) in ('0'..='9').enumerate() {
         place(&mut b, 1, i as i32, ch);
     }
-    let row1 = ['\u{2026}', '.', ':', '(', ')', '-', '\'', '!', '_', '+', '\\', '/', '[', ']', '^', '&', '%', ',', '=', '$', '#'];
+    let row1 = [
+        '\u{2026}', '.', ':', '(', ')', '-', '\'', '!', '_', '+', '\\', '/', '[', ']', '^', '&',
+        '%', ',', '=', '$', '#',
+    ];
     for (i, ch) in row1.iter().enumerate() {
         place(&mut b, 1, 10 + i as i32, *ch);
     }
@@ -279,7 +296,8 @@ fn numbers_bmp() -> Bitmap {
     ];
     for (d, segs) in SEGS.iter().enumerate() {
         let ox = d as i32 * 9;
-        let on = |b: &mut Bitmap, x: i32, y: i32, w: i32, h: i32| b.fill_rect(ox + x, y, w, h, LCD_FG);
+        let on =
+            |b: &mut Bitmap, x: i32, y: i32, w: i32, h: i32| b.fill_rect(ox + x, y, w, h, LCD_FG);
         if segs[0] {
             on(&mut b, 2, 0, 5, 2);
         }
@@ -372,7 +390,9 @@ fn emblem(b: &mut Bitmap, x: i32, y: i32) {
         "....#####....",
     ];
     pattern(b, x, y + 1, &ring, ACCENT);
-    let fe = ["###...", "#.....", "##..#.", "#..#.#", "#..##.", "#..#..", "....##"];
+    let fe = [
+        "###...", "#.....", "##..#.", "#..#.#", "#..##.", "#..#..", "....##",
+    ];
     pattern(b, x + 4, y + 4, &fe, TITLE_ON);
 }
 
@@ -380,15 +400,35 @@ fn emblem(b: &mut Bitmap, x: i32, y: i32) {
 // titlebar.bmp (344 x 87)
 
 fn title_strip(b: &mut Bitmap, y: i32, active: bool, text: &str) {
-    let (top, bottom) = if active { (rgb(70, 74, 120), rgb(36, 38, 70)) } else { (rgb(64, 66, 82), rgb(40, 41, 52)) };
+    let (top, bottom) = if active {
+        (rgb(70, 74, 120), rgb(36, 38, 70))
+    } else {
+        (rgb(64, 66, 82), rgb(40, 41, 52))
+    };
     vgradient(b, 27, y, 275, 14, top, bottom);
-    bevel(b, 27, y, 275, 14, if active { rgb(120, 126, 190) } else { BODY_HI }, BODY_DARK);
+    bevel(
+        b,
+        27,
+        y,
+        275,
+        14,
+        if active { rgb(120, 126, 190) } else { BODY_HI },
+        BODY_DARK,
+    );
     let fg = if active { TITLE_ON } else { TITLE_OFF };
     let w = label_width(text);
     let tx = 27 + (275 - w) / 2;
     // Decorative ridges either side of the title.
-    let ridge = if active { rgb(130, 136, 200) } else { rgb(96, 98, 116) };
-    let ridge_lo = if active { rgb(24, 26, 52) } else { rgb(30, 30, 40) };
+    let ridge = if active {
+        rgb(130, 136, 200)
+    } else {
+        rgb(96, 98, 116)
+    };
+    let ridge_lo = if active {
+        rgb(24, 26, 52)
+    } else {
+        rgb(30, 30, 40)
+    };
     for (x0, x1) in [(27 + 18, tx - 5), (tx + w + 4, 27 + 240)] {
         for yy in [4, 7, 10] {
             b.hline(x0, y + yy - 1, x1 - x0, ridge);
@@ -404,12 +444,34 @@ fn title_strip(b: &mut Bitmap, y: i32, active: bool, text: &str) {
 }
 
 fn title_button(b: &mut Bitmap, x: i32, y: i32, kind: char, pressed: bool, active: bool) {
-    let face = if active { rgb(96, 100, 150) } else { rgb(80, 82, 100) };
-    b.fill_rect(x, y, 9, 9, if pressed { lerp(face, BODY_DARK, 0.4) } else { face });
+    let face = if active {
+        rgb(96, 100, 150)
+    } else {
+        rgb(80, 82, 100)
+    };
+    b.fill_rect(
+        x,
+        y,
+        9,
+        9,
+        if pressed {
+            lerp(face, BODY_DARK, 0.4)
+        } else {
+            face
+        },
+    );
     if pressed {
         bevel(b, x, y, 9, 9, BODY_DARK, face);
     } else {
-        bevel(b, x, y, 9, 9, if active { rgb(170, 176, 230) } else { BODY_HI }, BODY_DARK);
+        bevel(
+            b,
+            x,
+            y,
+            9,
+            9,
+            if active { rgb(170, 176, 230) } else { BODY_HI },
+            BODY_DARK,
+        );
     }
     let c = if active { TITLE_ON } else { TITLE_OFF };
     let o = if pressed { 1 } else { 0 };
@@ -449,7 +511,11 @@ fn titlebar_bmp() -> Bitmap {
     // Shade-mode seek bar: groove and three thumb variants.
     b.fill_rect(0, 36, 17, 7, BODY_LO);
     bevel(&mut b, 0, 36, 17, 7, BODY_DARK, BODY_HI);
-    for (x, c) in [(17, rgb(200, 90, 60)), (20, ACCENT), (23, rgb(120, 200, 80))] {
+    for (x, c) in [
+        (17, rgb(200, 90, 60)),
+        (20, ACCENT),
+        (23, rgb(120, 200, 80)),
+    ] {
         b.fill_rect(x, 36, 3, 7, c);
         b.vline(x, 36, 7, lerp(c, rgb(255, 255, 255), 0.4));
         b.vline(x + 2, 36, 7, lerp(c, BODY_DARK, 0.5));
@@ -458,7 +524,13 @@ fn titlebar_bmp() -> Bitmap {
     // Clutter bar: background, disabled background, selected letters.
     clutter_bar(&mut b, 304, 0, false);
     clutter_bar(&mut b, 312, 0, true);
-    let letters = [('O', 304, 47, 8), ('A', 312, 55, 7), ('I', 320, 62, 7), ('D', 328, 69, 8), ('V', 336, 77, 7)];
+    let letters = [
+        ('O', 304, 47, 8),
+        ('A', 312, 55, 7),
+        ('I', 320, 62, 7),
+        ('D', 328, 69, 8),
+        ('V', 336, 77, 7),
+    ];
     for (ch, x, y, h) in letters {
         b.fill_rect(x, y, 8, h, rgb(10, 60, 10));
         clutter_letter(&mut b, x, y, h, ch, LCD_FG);
@@ -467,9 +539,21 @@ fn titlebar_bmp() -> Bitmap {
 }
 
 fn shade_strip(b: &mut Bitmap, y: i32, active: bool) {
-    let (top, bottom) = if active { (rgb(70, 74, 120), rgb(36, 38, 70)) } else { (rgb(64, 66, 82), rgb(40, 41, 52)) };
+    let (top, bottom) = if active {
+        (rgb(70, 74, 120), rgb(36, 38, 70))
+    } else {
+        (rgb(64, 66, 82), rgb(40, 41, 52))
+    };
     vgradient(b, 27, y, 275, 14, top, bottom);
-    bevel(b, 27, y, 275, 14, if active { rgb(120, 126, 190) } else { BODY_HI }, BODY_DARK);
+    bevel(
+        b,
+        27,
+        y,
+        275,
+        14,
+        if active { rgb(120, 126, 190) } else { BODY_HI },
+        BODY_DARK,
+    );
     // Mini time display recess (127..152) and visualiser recess (79..117).
     sunken(b, 27 + 125, y + 2, 29, 10, LCD_BG);
     sunken(b, 27 + 78, y + 3, 40, 8, LCD_BG);
@@ -500,7 +584,13 @@ fn shade_strip(b: &mut Bitmap, y: i32, active: bool) {
 fn clutter_bar(b: &mut Bitmap, x: i32, y: i32, disabled: bool) {
     b.fill_rect(x, y, 8, 43, BODY_DARK);
     let c = if disabled { rgb(40, 60, 40) } else { LCD_DIM };
-    let cells = [('O', 3, 8), ('A', 11, 7), ('I', 18, 7), ('D', 25, 8), ('V', 33, 7)];
+    let cells = [
+        ('O', 3, 8),
+        ('A', 11, 7),
+        ('I', 18, 7),
+        ('D', 25, 8),
+        ('V', 33, 7),
+    ];
     for (ch, cy, h) in cells {
         clutter_letter(b, x, y + cy, h, ch, c);
     }
@@ -519,25 +609,69 @@ fn clutter_letter(b: &mut Bitmap, x: i32, y: i32, h: i32, ch: char, c: u32) {
 fn cbuttons_bmp() -> Bitmap {
     let mut b = Bitmap::new(136, 36, TRANSPARENT);
     let icons: [(i32, i32, &[&str]); 5] = [
-        (0, 23, &["#...#", "#..##", "#.###", "#####", "#.###", "#..##", "#...#"]),
-        (23, 23, &["#....", "##...", "###..", "####.", "###..", "##...", "#...."]),
-        (46, 23, &["##.##", "##.##", "##.##", "##.##", "##.##", "##.##", "##.##"]),
-        (69, 23, &["#####", "#####", "#####", "#####", "#####", "#####", "....."]),
-        (92, 22, &["#...#", "##..#", "###.#", "#####", "###.#", "##..#", "#...#"]),
+        (
+            0,
+            23,
+            &[
+                "#...#", "#..##", "#.###", "#####", "#.###", "#..##", "#...#",
+            ],
+        ),
+        (
+            23,
+            23,
+            &[
+                "#....", "##...", "###..", "####.", "###..", "##...", "#....",
+            ],
+        ),
+        (
+            46,
+            23,
+            &[
+                "##.##", "##.##", "##.##", "##.##", "##.##", "##.##", "##.##",
+            ],
+        ),
+        (
+            69,
+            23,
+            &[
+                "#####", "#####", "#####", "#####", "#####", "#####", ".....",
+            ],
+        ),
+        (
+            92,
+            22,
+            &[
+                "#...#", "##..#", "###.#", "#####", "###.#", "##..#", "#...#",
+            ],
+        ),
     ];
     for (x, w, icon) in icons {
         for (row, pressed) in [(0, false), (18, true)] {
             button_face(&mut b, x, row, w, 18, pressed);
             let o = if pressed { 1 } else { 0 };
             let iw = icon[0].len() as i32;
-            pattern(&mut b, x + (w - iw) / 2 + o, row + 5 + o, icon, if pressed { ACCENT } else { LABEL });
+            pattern(
+                &mut b,
+                x + (w - iw) / 2 + o,
+                row + 5 + o,
+                icon,
+                if pressed { ACCENT } else { LABEL },
+            );
         }
     }
-    let eject = ["...#...", "..###..", ".#####.", "#######", ".......", "#######"];
+    let eject = [
+        "...#...", "..###..", ".#####.", "#######", ".......", "#######",
+    ];
     for (row, pressed) in [(0, false), (16, true)] {
         button_face(&mut b, 114, row, 22, 16, pressed);
         let o = if pressed { 1 } else { 0 };
-        pattern(&mut b, 114 + 7 + o, row + 5 + o, &eject, if pressed { ACCENT } else { LABEL });
+        pattern(
+            &mut b,
+            114 + 7 + o,
+            row + 5 + o,
+            &eject,
+            if pressed { ACCENT } else { LABEL },
+        );
     }
     b
 }
@@ -547,10 +681,28 @@ fn cbuttons_bmp() -> Bitmap {
 
 fn playpaus_bmp() -> Bitmap {
     let mut b = Bitmap::new(42, 9, LCD_BG);
-    pattern(&mut b, 3, 1, &["#....", "###..", "#####", "###..", "#...."], LCD_FG);
+    pattern(
+        &mut b,
+        3,
+        1,
+        &["#....", "###..", "#####", "###..", "#...."],
+        LCD_FG,
+    );
     b.fill_rect(1, 1, 1, 7, LCD_FG);
-    pattern(&mut b, 11, 2, &["##.##", "##.##", "##.##", "##.##", "##.##"], ACCENT);
-    pattern(&mut b, 20, 2, &["#####", "#####", "#####", "#####", "#####"], rgb(220, 60, 40));
+    pattern(
+        &mut b,
+        11,
+        2,
+        &["##.##", "##.##", "##.##", "##.##", "##.##"],
+        ACCENT,
+    );
+    pattern(
+        &mut b,
+        20,
+        2,
+        &["#####", "#####", "#####", "#####", "#####"],
+        rgb(220, 60, 40),
+    );
     // Working / not-working indicators (3px wide, at 36 and 39).
     b.fill_rect(36, 0, 3, 9, LCD_BG);
     b.fill_rect(39, 0, 3, 9, LCD_BG);
@@ -602,7 +754,15 @@ fn level_track(b: &mut Bitmap, x: i32, y: i32, w: i32, fill_frac: f32, color: u3
     bevel(b, x, y, w, 13, BODY_DARK, BODY_HI);
     let inner = w - 4;
     let filled = (inner as f32 * fill_frac).round() as i32;
-    vgradient(b, x + 2, y + 4, filled, 5, lerp(color, rgb(255, 255, 255), 0.25), lerp(color, BODY_DARK, 0.3));
+    vgradient(
+        b,
+        x + 2,
+        y + 4,
+        filled,
+        5,
+        lerp(color, rgb(255, 255, 255), 0.25),
+        lerp(color, BODY_DARK, 0.3),
+    );
     for t in (x + 3..x + w - 2).step_by(4) {
         b.set(t, y + 10, lerp(BODY_DARK, BODY_HI, 0.5));
     }
@@ -612,7 +772,11 @@ fn volume_bmp() -> Bitmap {
     let mut b = Bitmap::new(68, 433, TRANSPARENT);
     for i in 0..28 {
         let t = i as f32 / 27.0;
-        let color = if t < 0.5 { lerp(rgb(30, 200, 40), rgb(230, 210, 30), t * 2.0) } else { lerp(rgb(230, 210, 30), rgb(230, 50, 30), (t - 0.5) * 2.0) };
+        let color = if t < 0.5 {
+            lerp(rgb(30, 200, 40), rgb(230, 210, 30), t * 2.0)
+        } else {
+            lerp(rgb(230, 210, 30), rgb(230, 50, 30), (t - 0.5) * 2.0)
+        };
         level_track(&mut b, 0, i * 15, 68, t, color);
     }
     slider_thumb(&mut b, 15, 422, false);
@@ -629,8 +793,24 @@ fn balance_bmp() -> Bitmap {
         bevel(&mut b, 9, i * 15, 38, 13, BODY_DARK, BODY_HI);
         b.fill_rect(9 + 18, i * 15 + 3, 2, 7, lerp(BODY_DARK, BODY_HI, 0.5));
         let half = (16.0 * t).round() as i32;
-        vgradient(&mut b, 9 + 19 - half, i * 15 + 4, half, 5, color, lerp(color, BODY_DARK, 0.3));
-        vgradient(&mut b, 9 + 19, i * 15 + 4, half, 5, color, lerp(color, BODY_DARK, 0.3));
+        vgradient(
+            &mut b,
+            9 + 19 - half,
+            i * 15 + 4,
+            half,
+            5,
+            color,
+            lerp(color, BODY_DARK, 0.3),
+        );
+        vgradient(
+            &mut b,
+            9 + 19,
+            i * 15 + 4,
+            half,
+            5,
+            color,
+            lerp(color, BODY_DARK, 0.3),
+        );
     }
     slider_thumb(&mut b, 15, 422, false);
     slider_thumb(&mut b, 0, 422, true);
@@ -651,7 +831,12 @@ fn slider_thumb(b: &mut Bitmap, x: i32, y: i32, pressed: bool) {
 fn shufrep_bmp() -> Bitmap {
     let mut b = Bitmap::new(92, 85, TRANSPARENT);
     // Rows: 0 off, 15 off+pressed, 30 on, 45 on+pressed.
-    for (row, on, pressed) in [(0, false, false), (15, false, true), (30, true, false), (45, true, true)] {
+    for (row, on, pressed) in [
+        (0, false, false),
+        (15, false, true),
+        (30, true, false),
+        (45, true, true),
+    ] {
         toggle(&mut b, 0, row, 28, 15, "REP", on, pressed);
         toggle(&mut b, 28, row, 47, 15, "SHUFFLE", on, pressed);
     }
@@ -674,13 +859,21 @@ fn toggle(b: &mut Bitmap, x: i32, y: i32, w: i32, h: i32, text: &str, on: bool, 
     b.fill_rect(x + 3 + o, y + h / 2 - 1 + o, 2, 3, led);
     let tw = label_width(text);
     let tx = x + 6 + (w - 6 - tw) / 2 + o;
-    label(b, tx, y + (h - 5) / 2 + o, text, if on { TITLE_ON } else { LABEL });
+    label(
+        b,
+        tx,
+        y + (h - 5) / 2 + o,
+        text,
+        if on { TITLE_ON } else { LABEL },
+    );
 }
 
 // ---------------------------------------------------------------------------
 // eqmain.bmp (275 x 315)
 
-const EQ_BANDS: [&str; 10] = ["60", "170", "310", "600", "1K", "3K", "6K", "12K", "14K", "16K"];
+const EQ_BANDS: [&str; 10] = [
+    "60", "170", "310", "600", "1K", "3K", "6K", "12K", "14K", "16K",
+];
 
 fn eqmain_bmp() -> Bitmap {
     let mut b = Bitmap::new(275, 315, TRANSPARENT);
@@ -710,7 +903,12 @@ fn eqmain_bmp() -> Bitmap {
     title_button(&mut b, 0, 125, 'x', true, true);
 
     // ON / AUTO buttons at y=119.
-    for (x_on, x_auto, on, pressed) in [(10, 36, false, false), (69, 95, true, false), (128, 154, false, true), (187, 213, true, true)] {
+    for (x_on, x_auto, on, pressed) in [
+        (10, 36, false, false),
+        (69, 95, true, false),
+        (128, 154, false, true),
+        (187, 213, true, true),
+    ] {
         toggle(&mut b, x_on, 119, 26, 12, "ON", on, pressed);
         toggle(&mut b, x_auto, 119, 32, 12, "AUTO", on, pressed);
     }
@@ -740,7 +938,11 @@ fn eqmain_bmp() -> Bitmap {
     }
     for i in 0..19 {
         let t = i as f32 / 18.0;
-        let c = if t < 0.5 { lerp(rgb(255, 60, 40), rgb(250, 220, 40), t * 2.0) } else { lerp(rgb(250, 220, 40), rgb(40, 220, 60), (t - 0.5) * 2.0) };
+        let c = if t < 0.5 {
+            lerp(rgb(255, 60, 40), rgb(250, 220, 40), t * 2.0)
+        } else {
+            lerp(rgb(250, 220, 40), rgb(40, 220, 60), (t - 0.5) * 2.0)
+        };
         b.set(115, 294 + i, c);
     }
     for x in 0..113 {
@@ -752,9 +954,21 @@ fn eqmain_bmp() -> Bitmap {
 }
 
 fn eq_title(b: &mut Bitmap, y: i32, active: bool) {
-    let (top, bottom) = if active { (rgb(70, 74, 120), rgb(36, 38, 70)) } else { (rgb(64, 66, 82), rgb(40, 41, 52)) };
+    let (top, bottom) = if active {
+        (rgb(70, 74, 120), rgb(36, 38, 70))
+    } else {
+        (rgb(64, 66, 82), rgb(40, 41, 52))
+    };
     vgradient(b, 0, y, 275, 14, top, bottom);
-    bevel(b, 0, y, 275, 14, if active { rgb(120, 126, 190) } else { BODY_HI }, BODY_DARK);
+    bevel(
+        b,
+        0,
+        y,
+        275,
+        14,
+        if active { rgb(120, 126, 190) } else { BODY_HI },
+        BODY_DARK,
+    );
     let fg = if active { TITLE_ON } else { TITLE_OFF };
     label_centered(b, 137, y + 4, "EQUALIZER", fg);
     title_button(b, 254, y + 3, 's', false, active);
@@ -767,7 +981,11 @@ fn band_background(b: &mut Bitmap, x: i32, y: i32, level: f32) {
     b.fill_rect(x + 5, y + 2, 4, 59, BODY_DARK);
     b.vline(x + 9, y + 2, 59, lerp(BODY_LO, BODY_HI, 0.4));
     // Coloured fill from the centre line towards the level.
-    let color = if level >= 0.5 { lerp(rgb(250, 220, 40), rgb(255, 70, 40), (level - 0.5) * 2.0) } else { lerp(rgb(250, 220, 40), rgb(40, 210, 70), (0.5 - level) * 2.0) };
+    let color = if level >= 0.5 {
+        lerp(rgb(250, 220, 40), rgb(255, 70, 40), (level - 0.5) * 2.0)
+    } else {
+        lerp(rgb(250, 220, 40), rgb(40, 210, 70), (0.5 - level) * 2.0)
+    };
     let center = y + 31;
     let reach = ((level - 0.5).abs() * 2.0 * 28.0).round() as i32;
     if level >= 0.5 {
@@ -792,9 +1010,21 @@ fn eq_thumb(b: &mut Bitmap, x: i32, y: i32, pressed: bool) {
 fn eq_ex_bmp() -> Bitmap {
     let mut b = Bitmap::new(275, 56, TRANSPARENT);
     for (y, active) in [(0, true), (15, false)] {
-        let (top, bottom) = if active { (rgb(70, 74, 120), rgb(36, 38, 70)) } else { (rgb(64, 66, 82), rgb(40, 41, 52)) };
+        let (top, bottom) = if active {
+            (rgb(70, 74, 120), rgb(36, 38, 70))
+        } else {
+            (rgb(64, 66, 82), rgb(40, 41, 52))
+        };
         vgradient(&mut b, 0, y, 275, 14, top, bottom);
-        bevel(&mut b, 0, y, 275, 14, if active { rgb(120, 126, 190) } else { BODY_HI }, BODY_DARK);
+        bevel(
+            &mut b,
+            0,
+            y,
+            275,
+            14,
+            if active { rgb(120, 126, 190) } else { BODY_HI },
+            BODY_DARK,
+        );
         let fg = if active { TITLE_ON } else { TITLE_OFF };
         label(&mut b, 6, y + 4, "EQ", fg);
         // Volume (61..158) and balance (164..207) grooves.
@@ -803,10 +1033,18 @@ fn eq_ex_bmp() -> Bitmap {
         title_button(&mut b, 254, y + 3, 'u', false, active);
         title_button(&mut b, 264, y + 3, 'x', false, active);
     }
-    for (x, c) in [(1, rgb(40, 200, 60)), (4, rgb(230, 210, 40)), (7, rgb(230, 70, 40))] {
+    for (x, c) in [
+        (1, rgb(40, 200, 60)),
+        (4, rgb(230, 210, 40)),
+        (7, rgb(230, 70, 40)),
+    ] {
         b.fill_rect(x, 30, 3, 7, c);
     }
-    for (x, c) in [(11, rgb(230, 70, 40)), (14, rgb(40, 200, 60)), (17, rgb(230, 70, 40))] {
+    for (x, c) in [
+        (11, rgb(230, 70, 40)),
+        (14, rgb(40, 200, 60)),
+        (17, rgb(230, 70, 40)),
+    ] {
         b.fill_rect(x, 30, 3, 7, c);
     }
     title_button(&mut b, 1, 38, 's', true, true);
@@ -822,7 +1060,11 @@ fn eq_ex_bmp() -> Bitmap {
 fn pledit_bmp() -> Bitmap {
     let mut b = Bitmap::new(280, 186, TRANSPARENT);
     for (y, active) in [(0, true), (21, false)] {
-        let (top, bottom) = if active { (rgb(70, 74, 120), rgb(36, 38, 70)) } else { (rgb(64, 66, 82), rgb(40, 41, 52)) };
+        let (top, bottom) = if active {
+            (rgb(70, 74, 120), rgb(36, 38, 70))
+        } else {
+            (rgb(64, 66, 82), rgb(40, 41, 52))
+        };
         let edge = if active { rgb(120, 126, 190) } else { BODY_HI };
         for (x, w) in [(0, 25), (26, 100), (127, 25), (153, 25)] {
             vgradient(&mut b, x, y, w, 20, top, bottom);
@@ -837,7 +1079,11 @@ fn pledit_bmp() -> Bitmap {
         let fg = if active { TITLE_ON } else { TITLE_OFF };
         label_centered(&mut b, 26 + 50, y + 4, "PLAYLIST", fg);
         // Ridges on the tile.
-        let ridge = if active { rgb(130, 136, 200) } else { rgb(96, 98, 116) };
+        let ridge = if active {
+            rgb(130, 136, 200)
+        } else {
+            rgb(96, 98, 116)
+        };
         for yy in [4, 7, 10] {
             b.hline(127, y + yy - 1, 25, ridge);
             b.hline(127, y + yy, 25, BODY_DARK);
@@ -869,7 +1115,11 @@ fn pledit_bmp() -> Bitmap {
     title_button(&mut b, 150, 42, 'u', true, true);
     // Shade backgrounds.
     for (y, active) in [(42, true), (57, false)] {
-        let (top, bottom) = if active { (rgb(70, 74, 120), rgb(36, 38, 70)) } else { (rgb(64, 66, 82), rgb(40, 41, 52)) };
+        let (top, bottom) = if active {
+            (rgb(70, 74, 120), rgb(36, 38, 70))
+        } else {
+            (rgb(64, 66, 82), rgb(40, 41, 52))
+        };
         let edge = if active { rgb(120, 126, 190) } else { BODY_HI };
         vgradient(&mut b, 72, y, 25, 14, top, bottom);
         b.hline(72, y, 25, edge);
@@ -944,7 +1194,13 @@ fn pledit_bmp() -> Bitmap {
             let y = 111 + 19 * j as i32;
             for (dx, hot) in [(0, false), (23, true)] {
                 button_face(&mut b, x + dx, y, 22, 18, hot);
-                label_centered(&mut b, x + dx + 11, y + 7, name, if hot { ACCENT } else { LABEL });
+                label_centered(
+                    &mut b,
+                    x + dx + 11,
+                    y + 7,
+                    name,
+                    if hot { ACCENT } else { LABEL },
+                );
             }
         }
     }

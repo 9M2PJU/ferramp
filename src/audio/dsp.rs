@@ -2,7 +2,9 @@
 
 use std::f64::consts::PI;
 
-pub const EQ_FREQS: [f64; 10] = [60.0, 170.0, 310.0, 600.0, 1000.0, 3000.0, 6000.0, 12000.0, 14000.0, 16000.0];
+pub const EQ_FREQS: [f64; 10] = [
+    60.0, 170.0, 310.0, 600.0, 1000.0, 3000.0, 6000.0, 12000.0, 14000.0, 16000.0,
+];
 /// Range of the equalizer sliders in dB (the scale printed on the window).
 pub const EQ_RANGE_DB: f64 = 12.0;
 
@@ -17,14 +19,22 @@ pub struct EqSettings {
 
 impl Default for EqSettings {
     fn default() -> Self {
-        EqSettings { enabled: false, preamp: 31, bands: [31; 10] }
+        EqSettings {
+            enabled: false,
+            preamp: 31,
+            bands: [31; 10],
+        }
     }
 }
 
 pub fn slider_to_db(v: u8) -> f64 {
     // 0 -> +12, 31 -> 0 (the default position), 63 -> -12
     let v = v.min(63) as f64;
-    if v <= 31.0 { (31.0 - v) / 31.0 * EQ_RANGE_DB } else { (31.0 - v) / 32.0 * EQ_RANGE_DB }
+    if v <= 31.0 {
+        (31.0 - v) / 31.0 * EQ_RANGE_DB
+    } else {
+        (31.0 - v) / 32.0 * EQ_RANGE_DB
+    }
 }
 
 #[derive(Clone, Copy, Default)]
@@ -75,7 +85,12 @@ pub struct Equalizer {
 
 impl Equalizer {
     pub fn new(rate: u32, settings: EqSettings) -> Equalizer {
-        let mut e = Equalizer { rate: rate as f64, settings, filters: Vec::new(), preamp_gain: 1.0 };
+        let mut e = Equalizer {
+            rate: rate as f64,
+            settings,
+            filters: Vec::new(),
+            preamp_gain: 1.0,
+        };
         e.rebuild();
         e
     }
@@ -148,7 +163,11 @@ impl Resampler {
             for (k, v) in row.iter_mut().enumerate() {
                 // Tap k corresponds to input offset (k - half_taps + 1) from floor(pos).
                 let x = (k as f64 - half_taps as f64 + 1.0) - frac;
-                let sinc = if x.abs() < 1e-9 { 1.0 } else { (PI * cutoff * x).sin() / (PI * cutoff * x) };
+                let sinc = if x.abs() < 1e-9 {
+                    1.0
+                } else {
+                    (PI * cutoff * x).sin() / (PI * cutoff * x)
+                };
                 let n = (x + half_taps as f64) / (2.0 * half_taps as f64);
                 let w = if (0.0..=1.0).contains(&n) {
                     0.42 - 0.5 * (2.0 * PI * n).cos() + 0.08 * (4.0 * PI * n).cos()
@@ -269,7 +288,10 @@ mod tests {
 
     #[test]
     fn eq_boosts_band() {
-        let mut s = EqSettings { enabled: true, ..Default::default() };
+        let mut s = EqSettings {
+            enabled: true,
+            ..Default::default()
+        };
         s.bands[4] = 0; // +12 dB at 1 kHz
         let mut eq = Equalizer::new(44100, s);
         let mut x = sine(44100, 1000.0, 44100);
@@ -277,7 +299,13 @@ mod tests {
         let gain = rms(&x[10000..]) / (0.5 / 2f64.sqrt());
         assert!(gain > 3.0 && gain < 4.5, "{gain}");
         // Disabled EQ is a no-op.
-        let mut eq = Equalizer::new(44100, EqSettings { enabled: false, ..s });
+        let mut eq = Equalizer::new(
+            44100,
+            EqSettings {
+                enabled: false,
+                ..s
+            },
+        );
         let mut y = sine(44100, 1000.0, 1000);
         let before = y.clone();
         eq.process(&mut y);

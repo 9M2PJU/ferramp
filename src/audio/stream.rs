@@ -12,7 +12,12 @@ pub struct IcyReader<R: Read> {
 
 impl<R: Read> IcyReader<R> {
     pub fn new(inner: R, metaint: Option<usize>, titles: Sender<String>) -> Self {
-        IcyReader { inner, metaint, until_meta: metaint.unwrap_or(0), titles }
+        IcyReader {
+            inner,
+            metaint,
+            until_meta: metaint.unwrap_or(0),
+            titles,
+        }
     }
 
     fn read_metadata(&mut self) -> io::Result<()> {
@@ -37,7 +42,11 @@ pub fn parse_stream_title(meta: &str) -> Option<String> {
     let rest = &meta[start..];
     let end = rest.find("';").or_else(|| rest.rfind('\''))?;
     let t = rest[..end].trim();
-    if t.is_empty() { None } else { Some(t.to_string()) }
+    if t.is_empty() {
+        None
+    } else {
+        Some(t.to_string())
+    }
 }
 
 impl<R: Read> Read for IcyReader<R> {
@@ -74,14 +83,22 @@ pub fn open(url: &str, titles: Sender<String>) -> Result<OpenedStream, String> {
         .header("User-Agent", concat!("Ferramp/", env!("CARGO_PKG_VERSION")))
         .call()
         .map_err(|e| format!("{url}: {e}"))?;
-    let header = |name: &str| resp.headers().get(name).and_then(|v| v.to_str().ok()).map(|s| s.to_string());
+    let header = |name: &str| {
+        resp.headers()
+            .get(name)
+            .and_then(|v| v.to_str().ok())
+            .map(|s| s.to_string())
+    };
     let metaint = header("icy-metaint").and_then(|v| v.trim().parse().ok());
     let name = header("icy-name");
     let content_type = header("content-type");
-    let bitrate = header("icy-br").and_then(|v| v.split(',').next().and_then(|b| b.trim().parse().ok()));
+    let bitrate =
+        header("icy-br").and_then(|v| v.split(',').next().and_then(|b| b.trim().parse().ok()));
     let body = resp.into_body().into_reader();
     Ok(OpenedStream {
-        reader: Box::new(SyncReader(std::sync::Mutex::new(IcyReader::new(body, metaint, titles)))),
+        reader: Box::new(SyncReader(std::sync::Mutex::new(IcyReader::new(
+            body, metaint, titles,
+        )))),
         name,
         content_type,
         bitrate,
@@ -93,7 +110,10 @@ struct SyncReader<R: Read + Send>(std::sync::Mutex<R>);
 
 impl<R: Read + Send> Read for SyncReader<R> {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        self.0.get_mut().map_err(|_| io::Error::other("poisoned"))?.read(buf)
+        self.0
+            .get_mut()
+            .map_err(|_| io::Error::other("poisoned"))?
+            .read(buf)
     }
 }
 
@@ -125,6 +145,9 @@ mod tests {
     #[test]
     fn title_parsing() {
         assert_eq!(parse_stream_title("StreamTitle='';StreamUrl='';"), None);
-        assert_eq!(parse_stream_title("StreamTitle='It's here';"), Some("It's here".into()));
+        assert_eq!(
+            parse_stream_title("StreamTitle='It's here';"),
+            Some("It's here".into())
+        );
     }
 }

@@ -106,7 +106,9 @@ impl Fft {
             j += m;
         }
         let mult = 2.0 * PI / samples_in as f32;
-        let envelope = (0..samples_in).map(|i| 0.5 + 0.5 * (i as f32 * mult - PI / 2.0).sin()).collect();
+        let envelope = (0..samples_in)
+            .map(|i| 0.5 + 0.5 * (i as f32 * mult - PI / 2.0).sin())
+            .collect();
         let mut equalize = Vec::with_capacity(nfreq / 2);
         let mut bias = 0.04f32;
         for i in 0..nfreq / 2 {
@@ -121,14 +123,25 @@ impl Fft {
             cossin.push((theta.cos() as f32, theta.sin() as f32));
             size <<= 1;
         }
-        Fft { bitrev, envelope, equalize, cossin, re: vec![0.0; nfreq], im: vec![0.0; nfreq] }
+        Fft {
+            bitrev,
+            envelope,
+            equalize,
+            cossin,
+            re: vec![0.0; nfreq],
+            im: vec![0.0; nfreq],
+        }
     }
 
     fn run(&mut self, wave: &[f32], out: &mut [f32]) {
         let n = self.re.len();
         for i in 0..n {
             let idx = self.bitrev[i];
-            self.re[i] = if idx < wave.len() { wave[idx] * self.envelope[idx] } else { 0.0 };
+            self.re[i] = if idx < wave.len() {
+                wave[idx] * self.envelope[idx]
+            } else {
+                0.0
+            };
         }
         self.im.fill(0.0);
         let mut size = 2;
@@ -194,7 +207,11 @@ impl Visualizer {
     }
 
     pub fn heights(&self) -> Vec<i32> {
-        self.falloff_h.iter().step_by(4).map(|h| h.round() as i32).collect()
+        self.falloff_h
+            .iter()
+            .step_by(4)
+            .map(|h| h.round() as i32)
+            .collect()
     }
 
     pub fn reset(&mut self) {
@@ -207,7 +224,11 @@ impl Visualizer {
     pub fn analyze(&mut self, samples: &[f32], small: bool, opts: &VisOptions) {
         let n = samples.len();
         for i in 0..1024 {
-            let s = if n >= 1024 { samples[n - 1024 + i] } else { 0.0 };
+            let s = if n >= 1024 {
+                samples[n - 1024 + i]
+            } else {
+                0.0
+            };
             // The original works on 8-bit samples scaled by 1/24.
             self.wave[i] = (s * 127.0).round().clamp(-128.0, 127.0) / 24.0;
         }
@@ -236,7 +257,11 @@ impl Visualizer {
         for x in 0..width {
             let data = if opts.wide_bands {
                 let c = x & !3;
-                (self.sample[c] + self.sample[(c + 1).min(75)] + self.sample[(c + 2).min(75)] + self.sample[(c + 3).min(75)]) / 4.0
+                (self.sample[c]
+                    + self.sample[(c + 1).min(75)]
+                    + self.sample[(c + 2).min(75)]
+                    + self.sample[(c + 3).min(75)])
+                    / 4.0
             } else {
                 self.sample[x]
             };
@@ -260,7 +285,15 @@ impl Visualizer {
     }
 
     /// Draw the analyser into `dst` at (x, y). `colors` are the 24 viscolors.
-    pub fn draw_analyzer(&self, dst: &mut Bitmap, x0: i32, y0: i32, small: bool, colors: &[u32; 24], opts: &VisOptions) {
+    pub fn draw_analyzer(
+        &self,
+        dst: &mut Bitmap,
+        x0: i32,
+        y0: i32,
+        small: bool,
+        colors: &[u32; 24],
+        opts: &VisOptions,
+    ) {
         let h = if small { 5 } else { 16 };
         let push_down = if small { 0 } else { 2 };
         let width = if small { 37 } else { 75 };
@@ -302,11 +335,24 @@ impl Visualizer {
     }
 
     /// Draw the oscilloscope from the latest samples.
-    pub fn draw_oscilloscope(&mut self, dst: &mut Bitmap, samples: &[f32], x0: i32, y0: i32, small: bool, colors: &[u32; 24], opts: &VisOptions) {
+    pub fn draw_oscilloscope(
+        &mut self,
+        dst: &mut Bitmap,
+        samples: &[f32],
+        x0: i32,
+        y0: i32,
+        small: bool,
+        colors: &[u32; 24],
+        opts: &VisOptions,
+    ) {
         let render_h = if small { 5 } else { 16 };
         let push_down = if small { 0 } else { 2 };
         let n = samples.len();
-        let src = if n >= 576 { &samples[n - 576..] } else { samples };
+        let src = if n >= 576 {
+            &samples[n - 576..]
+        } else {
+            samples
+        };
         if src.is_empty() {
             return;
         }
@@ -384,7 +430,15 @@ impl Visualizer {
 }
 
 /// Background for the visualiser area: colour 0 with a dot grid of colour 1.
-pub fn draw_background(dst: &mut Bitmap, x0: i32, y0: i32, w: i32, h: i32, colors: &[u32; 24], grid: bool) {
+pub fn draw_background(
+    dst: &mut Bitmap,
+    x0: i32,
+    y0: i32,
+    w: i32,
+    h: i32,
+    colors: &[u32; 24],
+    grid: bool,
+) {
     dst.fill_rect(x0, y0, w, h, colors[0]);
     if grid {
         for y in (1..h).step_by(2) {

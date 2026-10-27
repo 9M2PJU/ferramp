@@ -49,7 +49,9 @@ mod imp {
     use winit::window::Window;
     use x11rb::connection::Connection;
     use x11rb::protocol::shape::{self, ConnectionExt as _};
-    use x11rb::protocol::xproto::{AtomEnum, ClipOrdering, ConnectionExt as _, PropMode, Rectangle};
+    use x11rb::protocol::xproto::{
+        AtomEnum, ClipOrdering, ConnectionExt as _, PropMode, Rectangle,
+    };
     use x11rb::rust_connection::RustConnection;
     use x11rb::wrapper::ConnectionExt as _;
 
@@ -82,9 +84,7 @@ mod imp {
     }
 
     pub fn global_cursor() -> Option<(i32, i32)> {
-        if std::env::var_os("DISPLAY").is_none() {
-            return None;
-        }
+        std::env::var_os("DISPLAY")?;
         with_conn(|conn, root| {
             let r = conn.query_pointer(root).ok()?.reply().ok()?;
             Some((r.root_x as i32, r.root_y as i32))
@@ -98,13 +98,27 @@ mod imp {
                 Some((m, w, h, scale)) => {
                     let rects: Vec<Rectangle> = super::mask_runs(m, w, h, scale)
                         .into_iter()
-                        .map(|(x, y, w, h)| Rectangle { x: x as i16, y: y as i16, width: w as u16, height: h as u16 })
+                        .map(|(x, y, w, h)| Rectangle {
+                            x: x as i16,
+                            y: y as i16,
+                            width: w as u16,
+                            height: h as u16,
+                        })
                         .collect();
-                    conn.shape_rectangles(shape::SO::SET, shape::SK::BOUNDING, ClipOrdering::UNSORTED, id, 0, 0, &rects)
-                        .ok()?;
+                    conn.shape_rectangles(
+                        shape::SO::SET,
+                        shape::SK::BOUNDING,
+                        ClipOrdering::UNSORTED,
+                        id,
+                        0,
+                        0,
+                        &rects,
+                    )
+                    .ok()?;
                 }
                 None => {
-                    conn.shape_mask(shape::SO::SET, shape::SK::BOUNDING, id, 0, 0, x11rb::NONE).ok()?;
+                    conn.shape_mask(shape::SO::SET, shape::SK::BOUNDING, id, 0, 0, x11rb::NONE)
+                        .ok()?;
                 }
             }
             conn.flush().ok()
@@ -112,15 +126,36 @@ mod imp {
     }
 
     pub fn make_auxiliary(window: &Window, owner: &Window) {
-        let (Some(id), Some(owner_id)) = (xid(window), xid(owner)) else { return };
+        let (Some(id), Some(owner_id)) = (xid(window), xid(owner)) else {
+            return;
+        };
         with_conn(|conn, _| {
-            let atom = |name: &[u8]| conn.intern_atom(false, name).ok()?.reply().ok().map(|r| r.atom);
+            let atom = |name: &[u8]| {
+                conn.intern_atom(false, name)
+                    .ok()?
+                    .reply()
+                    .ok()
+                    .map(|r| r.atom)
+            };
             let state = atom(b"_NET_WM_STATE")?;
             let skip_taskbar = atom(b"_NET_WM_STATE_SKIP_TASKBAR")?;
             let skip_pager = atom(b"_NET_WM_STATE_SKIP_PAGER")?;
-            conn.change_property32(PropMode::REPLACE, id, state, AtomEnum::ATOM, &[skip_taskbar, skip_pager]).ok()?;
-            conn.change_property32(PropMode::REPLACE, id, AtomEnum::WM_TRANSIENT_FOR, AtomEnum::WINDOW, &[owner_id])
-                .ok()?;
+            conn.change_property32(
+                PropMode::REPLACE,
+                id,
+                state,
+                AtomEnum::ATOM,
+                &[skip_taskbar, skip_pager],
+            )
+            .ok()?;
+            conn.change_property32(
+                PropMode::REPLACE,
+                id,
+                AtomEnum::WM_TRANSIENT_FOR,
+                AtomEnum::WINDOW,
+                &[owner_id],
+            )
+            .ok()?;
             conn.flush().ok()
         });
     }
@@ -128,16 +163,22 @@ mod imp {
 
 #[cfg(windows)]
 mod imp {
-    use winit::raw_window_handle::{HasWindowHandle, RawWindowHandle};
     use windows_sys::Win32::Foundation::POINT;
-    use windows_sys::Win32::Graphics::Gdi::{CombineRgn, CreateRectRgn, DeleteObject, RGN_OR, SetWindowRgn};
+    use windows_sys::Win32::Graphics::Gdi::{
+        CombineRgn, CreateRectRgn, DeleteObject, RGN_OR, SetWindowRgn,
+    };
     use windows_sys::Win32::UI::WindowsAndMessaging::GetCursorPos;
+    use winit::raw_window_handle::{HasWindowHandle, RawWindowHandle};
     use winit::window::Window;
 
     pub fn global_cursor() -> Option<(i32, i32)> {
         let mut p = POINT { x: 0, y: 0 };
         // SAFETY: GetCursorPos writes into the provided POINT.
-        if unsafe { GetCursorPos(&mut p) } != 0 { Some((p.x, p.y)) } else { None }
+        if unsafe { GetCursorPos(&mut p) } != 0 {
+            Some((p.x, p.y))
+        } else {
+            None
+        }
     }
 
     fn hwnd(window: &Window) -> Option<isize> {

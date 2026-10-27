@@ -117,9 +117,24 @@ impl State {
             eq: EqSettings::default(),
             eq_auto: false,
             stop_after_current: false,
-            main: WinGeom { x: 100, y: 100, visible: true, shade: false },
-            eqw: WinGeom { x: 100, y: 216, visible: true, shade: false },
-            pl: WinGeom { x: 100, y: 332, visible: true, shade: false },
+            main: WinGeom {
+                x: 100,
+                y: 100,
+                visible: true,
+                shade: false,
+            },
+            eqw: WinGeom {
+                x: 100,
+                y: 216,
+                visible: true,
+                shade: false,
+            },
+            pl: WinGeom {
+                x: 100,
+                y: 332,
+                visible: true,
+                shade: false,
+            },
             pl_size: (0, 0),
             focused: Some(WinKind::Main),
             llama: false,
@@ -169,14 +184,25 @@ impl State {
             WinKind::Eq => (275, if self.eqw.shade { 14 } else { 116 }),
             WinKind::Playlist => {
                 let width = 275 + self.pl_size.0 * PL_SEG_W;
-                (width, if self.pl.shade { 14 } else { 116 + self.pl_size.1 * PL_SEG_H })
+                (
+                    width,
+                    if self.pl.shade {
+                        14
+                    } else {
+                        116 + self.pl_size.1 * PL_SEG_H
+                    },
+                )
             }
         }
     }
 
     /// Double size applies to the main and equalizer windows.
     pub fn scale_of(&self, w: WinKind) -> i32 {
-        if self.doubled && w != WinKind::Playlist { 2 } else { 1 }
+        if self.doubled && w != WinKind::Playlist {
+            2
+        } else {
+            1
+        }
     }
 
     pub fn position(&self) -> f64 {
@@ -210,11 +236,13 @@ impl State {
     pub fn media_text(&self) -> Option<String> {
         let idx = self.playlist.current?;
         let title = self.current_title()?;
-        let dur = self
-            .playlist
-            .current_entry()
-            .and_then(|e| e.duration)
-            .or(if self.status() != Status::Stopped { self.now.duration } else { None });
+        let dur = self.playlist.current_entry().and_then(|e| e.duration).or(
+            if self.status() != Status::Stopped {
+                self.now.duration
+            } else {
+                None
+            },
+        );
         Some(match dur {
             Some(d) => format!("{}. {} ({})", idx + 1, title, format_time(d)),
             None => format!("{}. {}", idx + 1, title),
@@ -232,7 +260,11 @@ impl State {
             Some(Focus::Balance) => return crate::ui::balance_text(self.balance),
             Some(Focus::Position(p)) => {
                 if let Some(d) = self.duration() {
-                    let pct = if d > 0.0 { (p / d * 100.0).round() as i32 } else { 0 };
+                    let pct = if d > 0.0 {
+                        (p / d * 100.0).round() as i32
+                    } else {
+                        0
+                    };
                     return format!("Seek to: {}/{} ({}%)", format_time(*p), format_time(d), pct);
                 }
             }
@@ -244,11 +276,21 @@ impl State {
                 return crate::ui::eq_text(*band, v);
             }
             Some(Focus::Double) => {
-                return format!("{} doublesize mode", if self.doubled { "Disable" } else { "Enable" });
+                return format!(
+                    "{} doublesize mode",
+                    if self.doubled { "Disable" } else { "Enable" }
+                );
             }
             Some(Focus::Text(t)) => {
                 if *t == "always-on-top" {
-                    return format!("{} always-on-top", if self.always_on_top { "Disable" } else { "Enable" });
+                    return format!(
+                        "{} always-on-top",
+                        if self.always_on_top {
+                            "Disable"
+                        } else {
+                            "Enable"
+                        }
+                    );
                 }
                 return t.to_string();
             }
@@ -259,7 +301,8 @@ impl State {
         {
             return e.clone();
         }
-        self.media_text().unwrap_or_else(|| concat!("Ferramp ", env!("CARGO_PKG_VERSION")).to_string())
+        self.media_text()
+            .unwrap_or_else(|| concat!("Ferramp ", env!("CARGO_PKG_VERSION")).to_string())
     }
 
     pub fn show_message(&mut self, text: impl Into<String>, secs: f64) {
@@ -270,7 +313,11 @@ impl State {
     /// Advance timers; returns true if something visible changed.
     pub fn tick(&mut self, now: Instant) -> bool {
         let mut changed = false;
-        if self.autoscroll && !self.marquee_dragging && now >= self.marquee_resume && now.duration_since(self.last_step) >= MARQUEE_STEP {
+        if self.autoscroll
+            && !self.marquee_dragging
+            && now >= self.marquee_resume
+            && now.duration_since(self.last_step) >= MARQUEE_STEP
+        {
             self.last_step = now;
             self.marquee_step = self.marquee_step.wrapping_add(1);
             changed = true;
@@ -321,7 +368,12 @@ pub fn time_digits(secs: f64) -> [u32; 4] {
         m %= 100;
     }
     let sec = s % 60;
-    [(m / 10) as u32, (m % 10) as u32, (sec / 10) as u32, (sec % 10) as u32]
+    [
+        (m / 10) as u32,
+        (m % 10) as u32,
+        (sec / 10) as u32,
+        (sec % 10) as u32,
+    ]
 }
 
 #[cfg(test)]
